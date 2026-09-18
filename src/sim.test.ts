@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, place, placement, step, findPath, cancelConstruction, stock, serialize, deserialize, RESOURCES, DEFINITIONS, type GameState, type BuildingKind } from './sim.ts';
+import { createGame, place, placement, step, findPath, cancelConstruction, stock, serialize, deserialize, RESOURCES, DEFINITIONS, goods, type GameState, type BuildingKind } from './sim.ts';
 
 function run(s: GameState, seconds: number) { for (let i = 0; i < seconds * 10; i++) step(s, .1); }
 function until(s: GameState, done: () => boolean, seconds = 500) {
@@ -15,14 +15,14 @@ function materials(s: GameState) {
   for (const t of s.tiles) { if (t.node === 'tree') wood += t.amount; if (t.node === 'rock') stone += t.amount; }
   for (const b of s.buildings) for (const a of [b.inventory, b.delivered]) { wood += a.wood + a.planks / 2; stone += a.stone; }
   for (const v of s.villagers) if (v.cargo) { if (v.cargo.resource === 'stone') stone += v.cargo.amount; else wood += v.cargo.amount / (v.cargo.resource === 'planks' ? 2 : 1); }
-  return { wood, stone };
+  return { wood: wood - s.woodGrown, stone };
 }
 
 test('deterministic starting world and river block passage', () => {
   const s = createGame(); assert.deepEqual(s, createGame()); assert.equal(s.villagers.length, 10);
   assert.equal(findPath(s, { x: 8, z: 12 }, { x: 17, z: 12 }), null);
   assert.ok(findPath(s, { x: 8, z: 12 }, { x: 7, z: 10 }));
-  assert.deepEqual(stock(s), { wood: 18, planks: 4, stone: 12 });
+  assert.deepEqual(stock(s), goods(18, 4, 12));
 });
 test('placement rejects water, occupied tiles, deposits and disconnected east bank', () => {
   const s = createGame();
@@ -34,7 +34,7 @@ test('placement rejects water, occupied tiles, deposits and disconnected east ba
 test('construction uses physical deliveries, prevents duplicates and conserves materials', () => {
   const s = createGame(), before = materials(s);
   const house = build(s, 'house', 7, 10);
-  assert.deepEqual(stock(s), { wood: 18, planks: 4, stone: 12 }, 'planning alone does not consume stock');
+  assert.deepEqual(stock(s), goods(18, 4, 12), 'planning alone does not consume stock');
   run(s, 1); assert.ok(s.villagers.some(v => v.task));
   until(s, () => house.complete);
   for (const r of RESOURCES) assert.equal(house.delivered[r], DEFINITIONS.house.cost[r]);
@@ -53,7 +53,7 @@ test('cancel in-flight deliveries returns material without duplication', () => {
   const s = createGame(), before = materials(s), b = build(s, 'house', 11, 16);
   until(s, () => s.villagers.some(v => v.cargo !== null));
   assert.ok(cancelConstruction(s, b.id)); run(s, 50);
-  assert.deepEqual(materials(s), before); assert.deepEqual(stock(s), { wood: 18, planks: 4, stone: 12 });
+  assert.deepEqual(materials(s), before); assert.deepEqual(stock(s), goods(18, 4, 12));
   assert.ok(s.villagers.every(v => !v.task && !v.cargo));
   assert.equal(cancelConstruction(s, 1), false);
 });
@@ -61,7 +61,7 @@ test('cancel partially delivered construction refunds goods already on site', ()
   const s = createGame(), before = materials(s), b = build(s, 'bridge', 13, 12);
   until(s, () => b.delivered.planks > 0);
   assert.ok(cancelConstruction(s, b.id)); run(s, 50);
-  assert.deepEqual(materials(s), before); assert.deepEqual(stock(s), { wood: 18, planks: 4, stone: 12 });
+  assert.deepEqual(materials(s), before); assert.deepEqual(stock(s), goods(18, 4, 12));
 });
 test('save and restore preserve in-flight task reservations and produce identical outcomes', () => {
   const s = createGame(); build(s, 'woodcutter', 7, 10); build(s, 'sawmill', 9, 10);

@@ -44,3 +44,37 @@ Die Ressourcenerhaltung wird einschließlich Vorkommen, Gebäudebeständen, ange
 ## Noch nicht abgenommen
 
 Breite GPU-/Browsermatrix, Langzeitpartien, Performance-Benchmarks auf schwacher Hardware, Screenreader-Bedienung der 3D-Welt, Touch-Geräte und Cloud-Hosting. Mobile Spielerfahrung gehört nicht zum MVP. Endliche Vorkommen und fehlender Abriss fertiger Gebäude sind dokumentierte Grenzen, keine versteckten Vollspiel-Funktionen.
+
+
+# Erweiterung 0.2 — Prüfung vom 18. September 2026
+
+## Automatisiert
+
+**27 Tests erfolgreich; TypeScript und Produktionsbuild erfolgreich.** Die bisherigen 13 Tests bleiben erhalten. Hinzu kommen 14 Tests für:
+
+- Version-1-Migration mit identischen ursprünglichen Feldern, Gebäuden, Waren und laufenden Bewohneraufgaben.
+- Unveränderte Legacy-Sicherung und getrennte Sandbox-Speicherung.
+- Schreibschutz bei beschädigten oder unlesbaren Spielständen; Ablehnung fehlender alter Warenbestände.
+- Biomabhängige Vorkommen und unterschiedliche Produktionsdauer von Bauernhöfen.
+- Expeditionsvoraussetzungen, Nachbarschaft, exakte einmalige Kosten und entdeckte Felder.
+- Schutz für bereits reservierte Transportwaren vor Expeditionsausgaben.
+- Stufen- und Regionssperren; Außenpostenpflicht in neuen Gebieten.
+- Langsames Nachwachsen, Schutz von Gebäuden/Straßen und offenbleibende Engstellen.
+- Deterministische Fortsetzung der Ökologie nach Speichern/Laden und begrenzte Walddichte.
+- Wirkung einer aktiven gegenüber einer pausierten Försterei.
+- Maximal 64 Bewohner mit gültigen eindeutigen Namen und speicherbarem Zustand.
+- Vollständige reguläre Kampagne: vier Stufen, 30 Bewohner, alle neuen Gebäude und sechs Regionen nach etwa **48,6 Simulationsminuten**. Kein Auffüllen von Ressourcen im Kampagnendurchlauf.
+
+## Browser
+
+Geprüft im eingebetteten Browser bei 1280 × 720, ausschließlich mit getrenntem Testspielstand. Fortgeschrittene Zustände stammen aus demselben regulären Kampagnendurchlauf.
+
+- Neue Expeditions-/Entwicklungsübersicht einschließlich deaktivierter Aktionen und konkreter Freischaltgründe.
+- Aufstieg vom Pionierlager zum Dorf über die echte Oberfläche; 14/32 Bewohner und neue Baukategorie sichtbar.
+- Bauernhof platziert; Werkstatt platziert, fertiggestellt und erster erzeugter Werkzeugbestand sichtbar.
+- Expedition in den Fernenwald bezahlt; Karte wechselt von „Stufe 3“ auf „Entdeckt“, Kamerafokus auf neues Gebiet funktioniert.
+- Vier Biome und vollständige Karte mit sechs Regionen visuell geprüft; vergrößerte Minimalkarte funktioniert.
+- Sechs Waren passen in die Ressourcenleiste; fortlaufende Ziele und 64er-Bevölkerungsgrenze werden angezeigt.
+- Keine JavaScript-/WebGL-Fehler oder Warnungen im geprüften Stand.
+
+Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Neustarttests benutzt. Bestehende Version-1-Daten werden vom neuen Speicherweg nicht beschrieben. Keine Aussage über alle Hardware-/GPU-Kombinationen; dafür steht ein breiter Leistungstest noch aus.
