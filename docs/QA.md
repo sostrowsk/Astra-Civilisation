@@ -78,3 +78,18 @@ Geprüft im eingebetteten Browser bei 1280 × 720, ausschließlich mit getrennte
 - Keine JavaScript-/WebGL-Fehler oder Warnungen im geprüften Stand.
 
 Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Neustarttests benutzt. Bestehende Version-1-Daten werden vom neuen Speicherweg nicht beschrieben. Keine Aussage über alle Hardware-/GPU-Kombinationen; dafür steht ein breiter Leistungstest noch aus.
+
+## Version 0.3 — Seed-Welten und Untertage (19.09.2026)
+
+- **35 automatisierte Tests erfolgreich**; TypeScript-Prüfung und Vite-Produktionsbuild erfolgreich.
+- Generator: reproduzierbare Seeds; unterschiedliche Landschaften; identische globale Geländefelder unabhängig von Chunkreihenfolge; Wasser und Berge setzen sich über Grenzen fort; signierte Regionenkoordinaten und Expansion über die bisherigen sechs Regionen hinaus.
+- Einstieg: 100 Seeds mit erreichbaren Startbauplätzen und garantierten Vorkommen. Grundwirtschaft, Baustellen, Abbruch, Materialerhaltung, Reservierungen und Sägewerk-Startreserve bleiben geprüft.
+- Bergbau: Höhlen und alle fünf Vorkommen; tiefenabhängige Verteilung; Sichtbarkeit; zusammenhängende Aufträge; keine Teleportation durch Gestein; mehrere Minen ohne doppelte Reservierungen; Pause, Abbruchmarkierung und Speichern während eines Auftrags.
+- Verarbeitung: Erz + Kohle → Barren; Eisen → Werkzeuge; Kupfer/Gold → Wissen; Diamanten als alternative Expeditionskosten. Fehlende Kohle verhindert Schmelzen.
+- Fortschritt: Vier Stufen und Bevölkerung bis 64 weiterhin geprüft. Reales Produktionsspiel vom Start bis zu geschmiedeten Eisenwerkzeugen mit Seed 42 ohne zusätzliche Vorräte: **34,3 Simulationsminuten**. Höhere Stufen werden mit gezielten Zustandsfixtures geprüft, nicht als vollständiger neuer End-to-End-Kampagnenlauf ausgegeben.
+- Waldschutz: Reproduzierbare Regeneration; Wege und Häuser frei; ein Setzling kann den einzigen Zugang zu einem Gebäude nicht versperren.
+- Browser bei 1280 × 720: Untertage öffnen, −32 m wählen, automatische Erkundung deaktivieren, vier Stollenfelder über die Koordinateneingabe markieren. Vier Felder wurden sichtbar ausgegraben; anschließende Goldader ausgewählt und über Weltklick zum Abbau markiert. Golderz erschien nach Transport in der Warenübersicht.
+- Browser: Metallauswahl der Schmelzhütte, Rückkehr zur Oberfläche, drei Tiefenoptionen, neue Baukategorie, Text-Seed und Zahlen-Seed. Text „Bergtal 2026“ ergab Seed 422572082. Zahlen-Seed 2026 wurde über die Oberfläche gespeichert und nach vollständigem Neuladen aus IndexedDB wiederhergestellt. Sandbox bleibt vom normalen Speicher getrennt.
+- Landschaftsvorschau mit 25 ausdrücklich finanzierten Regionen: Flüsse, Seen, Gebirge und verschiedene Biome sichtbar; weiter Zoom und korrigierte Kamera verhindern das Abschneiden des Vordergrunds. Vorschauen: `worldgen-preview.png`, `mining-preview.png`.
+- Keine Warnungen oder Fehler in den abgefragten Browserlogs. `git diff --check` sauber. Vite meldet weiterhin die unverpackte Three.js-Bundlegröße; etwa **170 kB gzip** JavaScript.
+- Speicherung jetzt lokal in IndexedDB statt der kleinen localStorage-Quota. Version-1-/2-Teststände werden nicht übernommen. Browser-RAM, Datenbankquota und Performance bei sehr großen Welten bleiben praktische Grenzen; keine Auslagerung entfernter Regionen und keine breite GPU-Messreihe.

@@ -1,134 +1,88 @@
-import { playCampaign } from '../scripts/campaign.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, place, step, findPath, stock, goods, serialize, deserialize, explore, expeditionStatus, advanceCivilisation, civilisationProgress, populationCap, regrowForest, tileAt, WIDTH, HEIGHT, ORIGINAL_WIDTH, ORIGINAL_HEIGHT, REGIONS, BIOMES, RESOURCES, recipeFor, type GameState, type BuildingKind, type Building } from './sim.ts';
-import { loadGame, saveGame, SAVE_KEY, LEGACY_KEY } from './persistence.ts';
-function run(s: GameState, seconds: number) { for (let i = 0; i < seconds * 10; i++) step(s, .1); }
-function until(s: GameState, predicate: () => boolean, seconds = 900) {
-  for (let i = 0; i < seconds * 10; i++) { if (predicate()) return; step(s, .1); }
-  assert.ok(predicate(), `Timed out: t=${s.time.toFixed(1)}, level=${s.level}, stock=${JSON.stringify(stock(s))}, goals=${JSON.stringify(civilisationProgress(s))}, unfinished=${JSON.stringify(s.buildings.filter(b => !b.complete))}`);
-}
-function build(s: GameState, kind: Exclude<BuildingKind, 'camp'>, x: number, z: number) {
-  const result = place(s, kind, x, z); assert.ok(result.ok, `${kind} ${x}/${z}: ${result.reason}`); return s.buildings.find(b => b.id === result.id)!;
-}
-function legacySave() {
-  const current = createGame(); build(current, 'woodcutter', 7, 10); run(current, 3);
-  const old: any = JSON.parse(serialize(current)); old.version = 1;
-  for (const k of ['level', 'regions', 'ecologyTick', 'woodGrown']) delete old[k];
-  old.tiles = current.tiles.filter(t => t.x < ORIGINAL_WIDTH && t.z < ORIGINAL_HEIGHT).map(({ biome, region, discovered, sapling, ...t }) => t);
-  for (const b of old.buildings) for (const field of ['inventory', 'delivered']) for (const r of ['food', 'tools', 'knowledge']) delete b[field][r];
-  return old;
-}
-class MemoryStorage {
-  values = new Map<string, string>();
-  getItem(key: string) { return this.values.get(key) ?? null; }
-  setItem(key: string, value: string) { this.values.set(key, value); }
-}
-
-test('legacy migration preserves every original tile, inventory, citizen and running route', () => {
-  const old = legacySave(), next = deserialize(JSON.stringify(old));
-  assert.equal(next.version, 2); assert.equal(next.tiles.length, WIDTH * HEIGHT);
-  assert.deepEqual(next.villagers, old.villagers);
-  for (const t of old.tiles) for (const key of Object.keys(t)) assert.deepEqual((tileAt(next, t.x, t.z) as any)[key], t[key]);
-  for (const b of old.buildings) assert.deepEqual(next.buildings.find(n => n.id === b.id), { ...b, inventory: { ...goods(), ...b.inventory }, delivered: { ...goods(), ...b.delivered } });
-  assert.deepEqual(next.regions, [0]); assert.equal(next.level, 1);
-  run(next, 40); assert.ok(next.buildings[1].complete);
-  assert.deepEqual(deserialize(serialize(next)), next);
+import { createGame, tileAt, explore, expeditionStatus, goods, stock, knownRegions, worldBounds, serialize, deserialize, place, step, regrowForest, findPath, type GameState } from './sim.ts';
+import { generateChunk, generateTile, terrainSample, regionId, regionCoords, seedNumber } from './generator.ts';
+import { loadGame, saveGame, SAVE_KEY } from './persistence.ts';
+const fund = (s: GameState) => { s.won = true; s.level = 4; s.buildings[0].inventory = goods(1000, 1000, 1000, 1000, 1000, 1000); };
+test('same seed reproduces terrain; different seeds vary mountains, water and biomes', () => {
+  assert.deepEqual(createGame(42), createGame(42)); assert.notDeepEqual(createGame(41).tiles, createGame(42).tiles);
+  const values = new Set<string>(); let water = 0, peaks = 0, lakes = 0;
+  for (let z = -120; z <= 120; z += 2) for (let x = -120; x <= 120; x += 2) { const t = terrainSample(42, x, z); values.add(t.biome); water += Number(t.water); lakes += Number(t.lake); peaks += Number(t.height > 4); }
+  assert.equal(values.size, 4); assert.ok(water > 100 && lakes > 50 && peaks > 100); assert.equal(seedNumber('Bergtal'), seedNumber('Bergtal')); assert.equal(seedNumber('4294967297'), 1);
 });
-test('storage migration leaves original save untouched and sandbox cannot affect it', () => {
-  const storage = new MemoryStorage(), raw = JSON.stringify(legacySave()); storage.setItem(LEGACY_KEY, raw);
-  const loaded = loadGame(storage); assert.ok(loaded.canSave); assert.match(loaded.notice, /übernommen/);
-  saveGame(storage, loaded.state); assert.equal(storage.getItem(LEGACY_KEY), raw);
-  const v2 = storage.getItem(SAVE_KEY); saveGame(storage, createGame(7), true); assert.equal(storage.getItem(SAVE_KEY), v2);
-  assert.equal(loadGame(storage, true).state.seed, 7);
-});
-test('corrupt current save is protected instead of silently replaced with an older save', () => {
-  const storage = new MemoryStorage(); storage.setItem(SAVE_KEY, '{broken'); storage.setItem(LEGACY_KEY, JSON.stringify(legacySave()));
-  const loaded = loadGame(storage); assert.equal(loaded.canSave, false); assert.equal(storage.getItem(SAVE_KEY), '{broken');
-  assert.equal(loadGame({ getItem() { throw new Error('denied'); }, setItem() {} }).canSave, false);
-});
-test('biomes have different deposits and agriculture rates', () => {
-  const s = createGame();
-  const forest = s.tiles.filter(t => t.region === 1 && t.node === 'tree');
-  const highland = s.tiles.filter(t => t.region === 2 && t.node === 'rock');
-  assert.ok(forest.length > 100); assert.ok(highland.length > 70);
-  assert.ok(forest.every(t => t.amount === 24)); assert.ok(highland.every(t => t.amount === 140));
-  const farm = { ...s.buildings[0], kind: 'farm' as const };
-  assert.ok(recipeFor(s, farm)!.seconds < recipeFor(s, { ...farm, x: 30, z: 30 })!.seconds);
-});
-test('exploration validates prerequisites, pays exactly once and unlocks only the requested region', () => {
-  const s = createGame(); s.buildings[0].inventory = goods(100, 200, 200, 200, 200, 200);
-  assert.equal(explore(s, 1).ok, false); s.won = true;
-  assert.equal(explore(s, 3).ok, false);
-  assert.equal(explore(s, 999).ok, false);
-  assert.equal(findPath(s, { x: 8, z: 12 }, { x: 27, z: 12 }), null);
-  const before = stock(s); assert.ok(explore(s, 1).ok);
-  for (const r of RESOURCES) assert.equal(stock(s)[r], before[r] - REGIONS[1].cost[r]);
-  assert.equal(explore(s, 1).ok, false); assert.equal(tileAt(s, 27, 12).discovered, true); assert.equal(tileAt(s, 27, 30).discovered, false);
-});
-test('an expedition cannot spend goods reserved for a construction delivery', () => {
-  const s = createGame(); s.won = true; s.buildings[0].inventory = goods(20, 24, 16);
-  build(s, 'house', 7, 10); step(s, .1);
-  assert.ok(s.villagers.some(v => v.task?.phase === 'pickup'));
-  assert.equal(explore(s, 1).ok, false);
-});
-test('new buildings and undiscovered land are locked until their era and expedition', () => {
-  const s = createGame(); assert.equal(place(s, 'farm', 7, 10).ok, false);
-  assert.equal(place(s, 'road', 27, 12).ok, false);
-  assert.equal(advanceCivilisation(s).ok, false); assert.equal(s.level, 1);
-});
-test('sparse woodland regenerates slowly without occupying buildings, roads or active routes', () => {
-  const s = createGame();
-  for (const t of s.tiles) if (t.discovered && t.node === 'tree') { t.node = null; t.amount = 0; }
-  const road = { x: 7, z: 11 }; assert.ok(place(s, 'road', road.x, road.z).ok);
-  const before = s.tiles.filter(t => t.discovered && t.node === 'tree').length;
-  run(s, 240);
-  assert.ok(s.woodGrown > 0); assert.ok(s.tiles.some(t => t.discovered && t.node === 'tree'));
-  assert.equal(before, 0); assert.equal(tileAt(s, 7, 11).node, null); assert.equal(tileAt(s, 8, 12).node, null);
-  assert.ok(findPath(s, { x: 8, z: 12 }, road));
-});
-test('regrowth never closes a one-tile route to an inhabited outpost', () => {
-  const s = createGame();
-  // The candidate is three cells from both buildings, so building buffers alone cannot protect this choke point.
-  for (const t of s.tiles) if (t.discovered && t.kind === 'grass') { t.node = 'rock'; t.amount = 1; }
-  for (const z of [12, 13, 14, 15, 16, 17, 18]) { const t = tileAt(s, 8, z); t.road = false; t.node = null; t.amount = 0; }
-  s.villagers.forEach(v => { v.x = 8; v.z = 12; });
-  const b: Building = { ...s.buildings[0], id: s.nextId++, kind: 'outpost', x: 8, z: 18 }; s.buildings.push(b);
-  tileAt(s, 8, 15).sapling = 200; regrowForest(s);
-  assert.equal(tileAt(s, 8, 15).node, null); assert.ok(findPath(s, s.buildings[0], b));
-});
-test('ecology continues identically after save/restore and stays density bounded', () => {
-  const s = createGame(); run(s, 70); const restored = deserialize(serialize(s));
-  run(s, 240); run(restored, 240); assert.deepEqual(restored, s);
-  assert.ok(s.tiles.filter(t => t.discovered && t.node === 'tree').length < 220);
-});
-
-test('complete campaign reaches all four eras through real production, delivery and exploration', () => {
-  const { state } = playCampaign();
-  assert.equal(state.level, 4); assert.equal(state.regions.length, 6);
-  console.log(`Four eras and six regions completed in ${(state.time / 60).toFixed(1)} simulation minutes.`);
-});
-
-
-test('active foresters accelerate nearby saplings; paused foresters do not', () => {
-  const active = createGame(); active.level = 2;
-  const forester = build(active, 'forester', 6, 13); forester.complete = true; forester.progress = 1;
-  const sapling = tileAt(active, 2, 13); sapling.node = null; sapling.amount = 0; sapling.sapling = 1;
-  const paused = deserialize(serialize(active)); paused.buildings.find(b => b.id === forester.id)!.active = false;
-  for (let i = 0; i < 3; i++) { regrowForest(active); regrowForest(paused); }
-  assert.equal(tileAt(active, 2, 13).node, 'tree'); assert.equal(tileAt(paused, 2, 13).node, null);
-});
-test('the highest era supports 64 individually named residents and no overflow', () => {
-  const s = createGame(); s.level = 4; s.buildings[0].inventory = goods(500, 500, 500);
-  for (let x = 5; x <= 11; x++) for (let z = 8; z <= 16; z++) {
-    if (s.buildings.length > 31) break;
-    const result = place(s, 'house', x, z); if (!result.ok) continue;
-    const b = s.buildings.find(b => b.id === result.id)!; b.delivered = goods(3, 4, 2); b.progress = .9999;
+test('chunk generation matches global samples at every boundary in either generation order', () => {
+  for (const seed of [1, 42, 999]) {
+    const a = generateChunk(seed, regionId(0, 0)), b = generateChunk(seed, regionId(1, 0));
+    for (const t of [...b, ...a]) assert.deepEqual(t, generateTile(seed, t.x, t.z));
+    for (let z = -24; z <= 48; z++) { const l = terrainSample(seed, 25, z), r = terrainSample(seed, 26, z); assert.ok(Math.abs(l.height - r.height) <= 1.25); }
   }
-  run(s, 1); assert.equal(s.villagers.length, 64); assert.ok(s.villagers.every(v => typeof v.name === 'string' && v.name));
-  assert.equal(new Set(s.villagers.map(v => v.name)).size, 64); assert.deepEqual(deserialize(serialize(s)), s);
 });
-test('legacy saves with missing inventory data are rejected before migration', () => {
-  const old = legacySave(); delete old.buildings[0].inventory;
-  assert.throws(() => deserialize(JSON.stringify(old)));
+test('water and mountain formations cross exploration borders', () => {
+  let waterCrossings = 0, mountainCrossings = 0;
+  for (let cz = -4; cz <= 4; cz++) for (let x = -100; x < 100; x++) {
+    const a = terrainSample(42, x, cz * 24 - 1), b = terrainSample(42, x, cz * 24);
+    if (a.water && b.water) waterCrossings++; if (a.height > 3 && b.height > 3) mountainCrossings++;
+  }
+  assert.ok(waterCrossings > 50); assert.ok(mountainCrossings > 50);
+});
+test('region ids roundtrip signed coordinates and world extends in all directions', () => {
+  for (let x = -10; x <= 10; x++) for (let z = -10; z <= 10; z++) assert.deepEqual(regionCoords(regionId(x, z)), { cx: x, cz: z });
+  const s = createGame(42); fund(s);
+  for (const [x, z] of [[-1, 0], [0, -1], [1, 0], [0, 1], [2, 0], [3, 0], [4, 0]]) assert.ok(explore(s, regionId(x, z)).ok);
+  assert.equal(s.regions.length, 8); assert.equal(s.tiles.length, 8 * 624); assert.equal(worldBounds(s).minX, -26); assert.ok(knownRegions(s).some(r => r.x === 130));
+  assert.deepEqual(deserialize(serialize(s)), s);
+});
+test('expeditions validate tiers, adjacency, reservations and charge only once', () => {
+  const s = createGame(42), id = regionId(1, 0); assert.equal(explore(s, id).ok, false); fund(s);
+  assert.equal(explore(s, regionId(10, 0)).ok, false);
+  const cost = knownRegions(s).find(r => r.id === id)!.cost, before = stock(s); assert.ok(explore(s, id).ok); assert.equal(stock(s).planks, before.planks - cost.planks);
+  const after = stock(s); assert.equal(explore(s, id).ok, false); assert.deepEqual(stock(s), after);
+  const reserved = createGame(42); reserved.won = true; reserved.buildings[0].inventory = goods(20, cost.planks, cost.stone); place(reserved, 'house', 7, 10); step(reserved, .1); assert.equal(expeditionStatus(reserved, id).ok, false);
+});
+test('diamonds can pay an expedition without removing other supplies', () => {
+  const s = createGame(42); s.won = true; s.buildings[0].inventory.diamond = 2; const before = stock(s); assert.ok(explore(s, regionId(-1, 0), true).ok); assert.deepEqual(stock(s), { ...before, diamond: 0 });
+});
+test('safe starting clearing and resources remain reachable over 100 seeds', () => {
+  for (let seed = 0; seed < 100; seed++) { const s = createGame(seed); for (const p of [{ x: 7, z: 10 }, { x: 9, z: 8 }, { x: 11, z: 9 }]) assert.ok(findPath(s, s.buildings[0], p)); assert.equal(tileAt(s, 4, 10).node, 'tree'); assert.equal(tileAt(s, 9, 6).node, 'rock'); }
+});
+test('forest regrowth respects roads and buildings and stays deterministic', () => {
+  const s = createGame(42); place(s, 'road', 6, 11); const copy = deserialize(serialize(s));
+  for (let i = 0; i < 80; i++) { s.ecologyTick++; copy.ecologyTick++; regrowForest(s); regrowForest(copy); }
+  assert.deepEqual(copy, s); assert.equal(tileAt(s, 6, 11).node, null); assert.equal(tileAt(s, 8, 12).node, null); assert.ok(s.woodGrown > 0);
+});
+test('legacy saves are disabled, new storage is isolated and corrupt v3 is protected', () => {
+  const values = new Map<string, string>([['astra-civilisation:save:v2', 'old test data']]), store = { getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, v: string) => { values.set(k, v); } };
+  const loaded = loadGame(store); assert.ok(loaded.canSave); assert.match(loaded.notice, /deaktiviert/); saveGame(store, loaded.state); const current = values.get(SAVE_KEY); saveGame(store, createGame(7), true); assert.equal(values.get(SAVE_KEY), current); assert.equal(loadGame(store, true).state.seed, 7);
+  values.set(SAVE_KEY, '{bad'); assert.equal(loadGame(store).canSave, false); assert.equal(values.get(SAVE_KEY), '{bad');
+});
+
+test('progression retains all four eras and population caps, including mining milestones', async () => {
+  const { DEFINITIONS, advanceCivilisation, civilisationProgress, populationCap, RESOURCES } = await import('./sim.ts');
+  const s = createGame(42); fund(s); s.level = 1;
+  // Fixtures isolate gate/cost checks from production; campaign separately verifies real supply.
+  const add = (kind: import('./sim.ts').BuildingKind, x = 6, z = 10) => {
+    const b = { id: s.nextId++, kind, x, z, complete: true, active: true, progress: 1, inventory: goods(), delivered: { ...DEFINITIONS[kind].cost } };
+    s.buildings.push(b); return b;
+  };
+  for (const kind of ['woodcutter', 'sawmill', 'quarry', 'warehouse', 'outpost'] as const) add(kind);
+  for (let i = 0; i < 27; i++) add('house');
+  const grow = () => { while (s.villagers.length < Math.min(populationCap(s), 64)) { const i = s.villagers.length; s.villagers.push({ ...s.villagers[0], id: i + 1, name: 'Person ' + i, task: null, cargo: null, mining: null }); } };
+  grow(); assert.ok(civilisationProgress(s).ready); assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 32);
+  add('farm'); add('farm'); add('forester'); add('warehouse'); add('mine'); add('smelter');
+  assert.ok(explore(s, regionId(-1, 0)).ok); assert.ok(explore(s, regionId(0, -1)).ok); add('outpost', -1, 12);
+  assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 48);
+  for (const kind of ['townhall', 'workshop', 'academy', 'forge'] as const) add(kind);
+  assert.ok(explore(s, regionId(1, 0)).ok); assert.ok(explore(s, regionId(0, 1)).ok); add('outpost', 8, -1);
+  assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 64); assert.equal(new Set(s.villagers.map(v => v.name)).size, 64);
+  assert.equal(advanceCivilisation(s).ok, false); for (const r of RESOURCES) assert.ok(stock(s)[r] >= 0);
+});
+
+test('a mature sapling cannot close the only corridor to another building', () => {
+  const s = createGame(42);
+  for (const t of s.tiles) Object.assign(t, { kind: 'water', waterway: 'lake', node: null, amount: 0, sapling: 0, road: false });
+  for (let z = 12; z <= 18; z++) Object.assign(tileAt(s, 8, z), { kind: 'grass', waterway: null });
+  for (const v of s.villagers) { v.x = 8; v.z = 12; }
+  s.buildings.push({ ...s.buildings[0], id: s.nextId++, x: 8, z: 18, kind: 'house', inventory: goods() });
+  tileAt(s, 8, 15).sapling = 1000; regrowForest(s);
+  assert.equal(tileAt(s, 8, 15).node, null); assert.ok(findPath(s, s.buildings[0], { x: 8, z: 18 }));
 });
