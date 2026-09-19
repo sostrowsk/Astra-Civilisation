@@ -93,3 +93,12 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Landschaftsvorschau mit 25 ausdrücklich finanzierten Regionen: Flüsse, Seen, Gebirge und verschiedene Biome sichtbar; weiter Zoom und korrigierte Kamera verhindern das Abschneiden des Vordergrunds. Vorschauen: `worldgen-preview.png`, `mining-preview.png`.
 - Keine Warnungen oder Fehler in den abgefragten Browserlogs. `git diff --check` sauber. Vite meldet weiterhin die unverpackte Three.js-Bundlegröße; etwa **170 kB gzip** JavaScript.
 - Speicherung jetzt lokal in IndexedDB statt der kleinen localStorage-Quota. Version-1-/2-Teststände werden nicht übernommen. Browser-RAM, Datenbankquota und Performance bei sehr großen Welten bleiben praktische Grenzen; keine Auslagerung entfernter Regionen und keine breite GPU-Messreihe.
+
+## Korrektur: unsichtbarer / stillstehender Bergbau (19.09.2026)
+
+- In der laufenden Partie mit 68 Regionen: Mine 9 / −40 hatte Leo zugeteilt, aber 40 Kupfererz im Ausgang. Die alte Anzeige meldete fälschlich eine fehlende Abbaufront. Träger prüften Betriebe immer in Bau-Reihenfolge, sodass dauerhaft volle frühe Holzfäller spätere Minen vom Abtransport ausschließen konnten.
+- Transporte wählen nun den am längsten nicht bedienten Betrieb und rotieren auch dessen Rohstoffe. Bestehende Baustellenpriorität und Reservierungen bleiben erhalten. Die Verteilungsposition wird mitgespeichert; alte v3-Spielstände benötigen keine Migration.
+- Die Untertage-Ansicht zeigt den zugeteilten Bergmann, tatsächliche Tiefe, laufende Tätigkeit, volle Lager, fehlende Aufträge und die Anzahl der Bergleute auf der Ebene. „Bergmann zeigen“ zentriert die Kamera am realen Aufenthaltsort, gegebenenfalls an der Oberfläche. Die Arbeitsauftrags-Tiefe bleibt beim Kamerasprung unverändert.
+- Bergleute tragen einen sichtbaren Helm und eine animierte Spitzhacke. Vergrößerte Untertage-Figuren und Namensmarkierungen machen sie im Gelände auffindbar.
+- Laufende Partie: Milo 3 in Mine 10 / −40 transportierte nach der Korrektur wieder Eisenerz auf −12 m. Separate Browserprüfung: Jonas sichtbar beim Graben mit Helm, Spitzhacke und Namensmarkierung; Kamerasprung und Zoom erfolgreich. Screenshot: `mining-workers-preview.png`. Keine Browserwarnungen/-fehler im Testfenster.
+- **38 Tests erfolgreich**, darunter dauerhaft volle frühe Holzfäller gegen eine volle Mine, faire Ausfuhr von Kohle neben Stein, Erhalt der Rohstoffe, deterministisches Laden der Transportverteilung und zutreffende Statusmeldungen.

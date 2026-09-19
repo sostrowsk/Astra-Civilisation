@@ -86,3 +86,38 @@ test('malformed underground data and duplicate cells are rejected', () => {
   const { s } = mineGame(); s.underground.push({ ...s.underground[0] }); assert.throws(() => deserialize(serialize(s)));
   const other = mineGame(); other.s.villagers[0].depth = 2; assert.throws(() => deserialize(serialize(other.s)));
 });
+
+test('busy early woodcutters cannot starve a full mine of outbound transport', async () => {
+  const { mineStatus } = await import('./mining.ts');
+  const s = createGame(42); s.level = 2;
+  const loggers = [complete(s, 'woodcutter', 7, 10), complete(s, 'woodcutter', 9, 10), complete(s, 'woodcutter', 11, 10)];
+  for (const logger of loggers) { logger.inventory.wood = 1000; logger.active = false; }
+  const mine = complete(s, 'mine', 10, 11); mine.autoMine = false; mine.inventory.copperOre = 40;
+  const target = stone(s, mine, 11, 11); revealCave(s, mine, 1);
+  s.villagers[0].job = mine.id;
+  assert.match(mineStatus(s, mine), /Minenlager voll/);
+  let underground = false;
+  for (let i = 0; i < 900; i++) { step(s, .1); underground ||= s.villagers.some(v => v.job === mine.id && v.depth === 1); }
+  assert.ok(underground, 'miner resumes after carriers collect despite thousands of waiting logs');
+  assert.equal(target.solid, false); assert.ok(s.buildings[0].inventory.copperOre > 0);
+  assert.equal(stock(s).copperOre + s.villagers.reduce((n, v) => n + (v.cargo?.resource === 'copperOre' ? v.cargo.amount : 0), 0), 40);
+  assert.ok(loggers.some(b => b.inventory.wood > 900));
+  const copy = deserialize(serialize(s)); run(s, 20); run(copy, 20); assert.deepEqual(copy, s);
+});
+
+test('carriers rotate a mine’s exported resources so coal is not starved by stone', () => {
+  const { s, b } = mineGame(); b.active = false; b.inventory.stone = 1000; b.inventory.coal = 6;
+  run(s, 25); assert.ok(s.buildings[0].inventory.coal > 0); assert.ok(b.inventory.stone > 500);
+});
+
+test('mine status distinguishes workers, full output, actual depth and absent orders', async () => {
+  const { mineStatus } = await import('./mining.ts'), { s, b } = mineGame();
+  assert.match(mineStatus(s, b), /Kein Bergmann/);
+  const worker = s.villagers[0]; worker.job = b.id;
+  assert.match(mineStatus(s, b), /Kein Abbauauftrag/);
+  b.inventory.copperOre = 40; assert.match(mineStatus(s, b), /Minenlager voll/); b.inventory.copperOre = 0;
+  stone(s, b, 11, 11); revealCave(s, b, 1);
+  for (let i = 0; i < 100 && worker.mining?.stage !== 'work'; i++) step(s, .1);
+  assert.match(mineStatus(s, b), /gräbt.*−12 m/); b.mineDepth = 3;
+  assert.match(mineStatus(s, b), /−12 m/, 'status follows the actual trip while future assignment depth changes');
+});

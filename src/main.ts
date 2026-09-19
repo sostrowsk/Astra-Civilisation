@@ -1,5 +1,5 @@
 import { seedNumber } from './generator.ts';
-import { DEPTHS, ORE_COLORS, undergroundAt, ensureDepth, markMining } from './mining.ts';
+import { mineStatus, DEPTHS, ORE_COLORS, undergroundAt, ensureDepth, markMining } from './mining.ts';
 import '@fontsource-variable/dm-sans/wght.css';
 import '@fontsource-variable/manrope/wght.css';
 import './style.css';
@@ -355,8 +355,8 @@ function enterUnderground(id?: number) {
   el<HTMLSelectElement>('mine-select').value = String(mine.id);
   setTool(null); setUndergroundDepth(mine.mineDepth ?? 1); world.focus(mine);
 }
-function setUndergroundDepth(depth: number) {
-  viewDepth = depth; const b = state.buildings.find(b => b.id === activeMine); if (b) b.mineDepth = depth;
+function setUndergroundDepth(depth: number, assign = true) {
+  viewDepth = depth; const b = state.buildings.find(b => b.id === activeMine); if (b && assign) b.mineDepth = depth;
   ensureDepth(state, depth); world.setDepth(depth); selected = null; areaStart = null; inspectorKey = '';
   document.body.classList.add('underground'); el('mining-dock').hidden = false;
   el<HTMLSelectElement>('depth-select').value = String(depth); el('underground-toggle').textContent = '↑ Oberfläche';
@@ -382,8 +382,15 @@ function updateMiningInspector() {
   const k = `under:${activeMine}:${viewDepth}:${selected?.x}:${selected?.z}:${t?.revealed}:${t?.solid}:${t?.ore}:${t?.order}`;
   if (inspectorKey !== k) {
     inspectorKey = k;
-    el('inspector').innerHTML = `<div class="eyebrow">UNTER TAGE · −${DEPTHS[viewDepth]} M</div><div class="inspector-icon">${icon('mine')}</div><h2>${!t ? 'Unter dem Tal.' : !t.revealed ? 'Unbekanntes Gestein' : !t.solid ? 'Offener Stollen' : t.ore ? NAMES[t.ore] : 'Massiver Fels'}</h2><p>${!t ? 'Wähle eine Erkundungsrichtung. Deine Bergleute graben Zugänge, entdecken Höhlen und bringen Rohstoffe zum Minenlager.' : !t.revealed ? 'Was hier verborgen liegt, zeigen erst Erkundung und Abbau. Verbinde dieses Ziel mit dem Schacht.' : !t.solid ? 'Ein begehbares Feld. Verbundene Höhlen sind bereits sichtbar.' : 'Nur erreichbare Abbaufronten werden bearbeitet. Markiere einen zusammenhängenden Weg vom Schacht hierher.'}</p><div id="underground-amount"></div><p>${t?.order ? 'Zum Abbau markiert.' : ''}</p><details class="coordinate-build"><summary>Stollen über Koordinaten markieren</summary><form id="mining-form"><label>Von X<input id="mine-x1" type="number" value="${selected?.x ?? state.buildings.find(b => b.id === activeMine)!.x}" required></label><label>Von Z<input id="mine-z1" type="number" value="${selected?.z ?? state.buildings.find(b => b.id === activeMine)!.z}" required></label><label>Bis X<input id="mine-x2" type="number" value="${selected?.x ?? state.buildings.find(b => b.id === activeMine)!.x + 4}" required></label><label>Bis Z<input id="mine-z2" type="number" value="${selected?.z ?? state.buildings.find(b => b.id === activeMine)!.z}" required></label><button class="primary">Abbau markieren</button></form></details><p class="biome-note">Ein Bergmann pro Mine · Auftragstiefe −${DEPTHS[viewDepth]} m. Bereits begonnene Transporte werden auf ihrer bisherigen Ebene abgeschlossen.</p>`;
+    el('inspector').innerHTML = `<div class="eyebrow">UNTER TAGE · −${DEPTHS[viewDepth]} M</div><div class="inspector-icon">${icon('mine')}</div><section class="mine-activity" aria-label="Bergbau-Betrieb"><strong id="mine-worker"></strong><p id="mine-status"></p><span id="mine-population"></span><button class="secondary" id="locate-miner">Bergmann zeigen</button></section><h2>${!t ? 'Unter dem Tal.' : !t.revealed ? 'Unbekanntes Gestein' : !t.solid ? 'Offener Stollen' : t.ore ? NAMES[t.ore] : 'Massiver Fels'}</h2><p>${!t ? 'Wähle eine Erkundungsrichtung. Deine Bergleute graben Zugänge, entdecken Höhlen und bringen Rohstoffe zum Minenlager.' : !t.revealed ? 'Was hier verborgen liegt, zeigen erst Erkundung und Abbau. Verbinde dieses Ziel mit dem Schacht.' : !t.solid ? 'Ein begehbares Feld. Verbundene Höhlen sind bereits sichtbar.' : 'Nur erreichbare Abbaufronten werden bearbeitet. Markiere einen zusammenhängenden Weg vom Schacht hierher.'}</p><div id="underground-amount"></div><p>${t?.order ? 'Zum Abbau markiert.' : ''}</p><details class="coordinate-build"><summary>Stollen über Koordinaten markieren</summary><form id="mining-form"><label>Von X<input id="mine-x1" type="number" value="${selected?.x ?? state.buildings.find(b => b.id === activeMine)!.x}" required></label><label>Von Z<input id="mine-z1" type="number" value="${selected?.z ?? state.buildings.find(b => b.id === activeMine)!.z}" required></label><label>Bis X<input id="mine-x2" type="number" value="${selected?.x ?? state.buildings.find(b => b.id === activeMine)!.x + 4}" required></label><label>Bis Z<input id="mine-z2" type="number" value="${selected?.z ?? state.buildings.find(b => b.id === activeMine)!.z}" required></label><button class="primary">Abbau markieren</button></form></details><p class="biome-note">Ein Bergmann pro Mine · Auftragstiefe −${DEPTHS[viewDepth]} m. Bereits begonnene Transporte werden auf ihrer bisherigen Ebene abgeschlossen.</p>`;
+    el('locate-miner').onclick = () => { const worker = state.villagers.find(v => v.job === activeMine); if (!worker) return; if (worker.depth) setUndergroundDepth(worker.depth, false); else leaveUnderground(); world.focus(worker); world.zoom(Math.max(1, 2 / world.camera.zoom)); };
     el('mining-form').onsubmit = e => { e.preventDefault(); const n = (id: string) => Number(el<HTMLInputElement>(id).value); toast(markMining(state, activeMine, viewDepth, { x: n('mine-x1'), z: n('mine-z1') }, { x: n('mine-x2'), z: n('mine-z2') }).reason); };
   }
+  const mine = state.buildings.find(b => b.id === activeMine)!;
+  const worker = state.villagers.find(v => v.job === mine.id);
+  el('mine-worker').textContent = worker ? `${worker.name} · ${worker.depth ? '−' + DEPTHS[worker.depth] + ' m' : 'an der Oberfläche'}` : 'Kein Bergmann zugeteilt';
+  el('mine-status').textContent = mineStatus(state, mine);
+  el('mine-population').textContent = `${state.villagers.filter(v => v.depth === viewDepth).length} Bergleute auf dieser Ebene · ${Object.values(mine.inventory).reduce((a, b) => a + b, 0)} / 40 Waren im Minenlager`;
+  el<HTMLButtonElement>('locate-miner').disabled = !worker;
   el('underground-amount').textContent = t?.revealed && t.solid ? `${t.amount} ${t.ore ? NAMES[t.ore] : 'Stein'} · Feld ${t.x} / ${t.z}` : '';
 }

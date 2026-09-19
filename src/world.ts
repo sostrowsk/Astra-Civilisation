@@ -153,6 +153,7 @@ export class World {
   tileTargets: THREE.Object3D[] = [];
   buildingMeshes = new Map<number, THREE.Group>();
   personMeshes = new Map<number, THREE.Group>();
+  workerLabels = new Map<number, HTMLDivElement>();
   preview: THREE.Mesh;
   selection: THREE.Mesh;
   revision = -1;
@@ -362,14 +363,36 @@ export class World {
         const legs = new THREE.Group();
         box(legs, '#554d3e', -.07, .1, 0, .08, .2, .10); box(legs, '#554d3e', .07, .1, 0, .08, .2, .10);
         g.add(legs); g.userData.legs = legs;
+        const helmet = new THREE.Group();
+        box(helmet, '#e2b44d', 0, .75, -.02, .29, .13, .28);
+        box(helmet, '#fff1af', 0, .74, .15, .1, .08, .07);
+        g.add(helmet); g.userData.helmet = helmet;
+        const pickaxe = new THREE.Group(); pickaxe.position.set(.2, .4, .08);
+        box(pickaxe, '#bb8a57', 0, .13, .05, .055, .45, .055);
+        box(pickaxe, '#c4d1d7', 0, .34, .05, .32, .065, .08);
+        g.add(pickaxe); g.userData.pickaxe = pickaxe;
+        const label = document.createElement('div'); label.className = 'mine-worker-label'; label.hidden = true; this.container.appendChild(label); this.workerLabels.set(v.id, label);
         const cargo = box(g, LIGHTWOOD, 0, .3, .22, .27, .24, .2); g.userData.cargo = cargo;
         this.people.add(g); this.personMeshes.set(v.id, g);
       }
       const t = tileAt(s, Math.round(v.x), Math.round(v.z));
       g.visible = v.depth === this.depth;
+      const miner = !!v.mining || s.buildings.some(b => b.id === v.job && b.kind === 'mine');
+      (g.userData.helmet as THREE.Group).visible = miner;
+      const pickaxe = g.userData.pickaxe as THREE.Group;
+      pickaxe.visible = !!v.depth && v.mining?.stage !== 'return';
+      pickaxe.rotation.x = v.mining?.stage === 'work' ? -.4 + Math.sin(s.time * 8 + v.id) * .85 : .3;
+      g.scale.setScalar(this.depth ? 1.5 : 1);
       const walking = !!(v.task?.path.length || v.mining?.path.length);
       g.position.set(wx(v.x), (this.depth ? .12 : t.kind === 'water' ? .57 : t.height) + (walking ? Math.abs(Math.sin(s.time * 9 + v.id)) * .055 : 0), wz(v.z));
       g.rotation.y = v.facing;
+      const label = this.workerLabels.get(v.id)!;
+      const projected = new THREE.Vector3(g.position.x, g.position.y + 1.3, g.position.z).project(this.camera);
+      label.hidden = !this.depth || !g.visible || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;
+      if (!label.hidden) {
+        label.textContent = `${v.name} · ${v.mining?.stage === 'work' ? 'gräbt' : v.cargo ? 'trägt ' + v.cargo.amount : 'unterwegs'}`;
+        label.style.left = `${(projected.x + 1) / 2 * this.container.clientWidth}px`; label.style.top = `${(1 - projected.y) / 2 * this.container.clientHeight}px`;
+      }
       const legs = g.userData.legs as THREE.Group;
       legs.children[0].rotation.x = walking ? Math.sin(s.time * 9 + v.id) * .5 : 0;
       legs.children[1].rotation.x = -legs.children[0].rotation.x;
@@ -377,7 +400,7 @@ export class World {
       cargo.visible = !!v.cargo;
       if (v.cargo) cargo.material = material(v.cargo.resource === 'stone' ? '#98a6a4' : v.cargo.resource === 'planks' ? '#dbb375' : v.cargo.resource === 'food' ? '#c5a249' : v.cargo.resource === 'tools' ? '#718993' : v.cargo.resource === 'knowledge' ? '#899bbb' : '#89603e');
     }
-    for (const [id, g] of this.personMeshes) if (!s.villagers.some(v => v.id === id)) { this.people.remove(g); this.personMeshes.delete(id); }
+    for (const [id, g] of this.personMeshes) if (!s.villagers.some(v => v.id === id)) { this.people.remove(g); this.personMeshes.delete(id); this.workerLabels.get(id)?.remove(); this.workerLabels.delete(id); }
     this.selection.visible = !!this.selected;
     if (this.selected) this.selection.position.set(wx(this.selected.x), (this.depth ? undergroundAt(s, this.selected.x, this.selected.z, this.depth)?.solid ? 1.0 : .15 : tileAt(s, this.selected.x, this.selected.z).height + .03), wz(this.selected.z));
     this.renderer.render(this.scene, this.camera);

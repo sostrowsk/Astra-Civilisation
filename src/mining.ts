@@ -1,5 +1,5 @@
 import { key, hash, noise, regionFor } from './generator.ts';
-import { findPath, tileAt, event, type GameState, type Point, type Building, type Villager, type Resource } from './sim.ts';
+import { NAMES, findPath, tileAt, event, type GameState, type Point, type Building, type Villager, type Resource } from './sim.ts';
 export const DEPTHS = [0, 12, 32, 64] as const;
 export const ORES = ['coal', 'copperOre', 'ironOre', 'goldOre', 'diamond'] as const;
 export type Ore = typeof ORES[number];
@@ -82,6 +82,23 @@ export function markMining(s: GameState, mineId: number, depth: number, from: Po
   return { ok: count > 0, reason: count ? `${count} Felder ${cancel ? 'freigegeben' : 'zum Abbau markiert'}.` : 'Keine passenden Gesteinsfelder. Markierungen beginnen an einer erreichbaren Stollenfront.' };
 }
 function dist(a: Point, b: Point) { return Math.abs(a.x - b.x) + Math.abs(a.z - b.z); }
+export function mineStatus(s: GameState, b: Building) {
+  const worker = s.villagers.find(v => v.job === b.id), trip = worker?.mining;
+  if (!b.complete) return 'Der Mineneingang wird noch gebaut.';
+  if (trip) {
+    const depth = `−${DEPTHS[trip.depth]} m`;
+    if (trip.stage === 'approach') return `${worker.name} läuft an der Oberfläche zum Schacht.`;
+    if (trip.stage === 'outbound') return `${worker.name} läuft zum Abbauort (${depth}).`;
+    if (trip.stage === 'work') return `${worker.name} gräbt (${depth}).`;
+    return `${worker.name} bringt ${worker.cargo ? NAMES[worker.cargo.resource] : 'Material'} zum Schacht (${depth}).`;
+  }
+  if (!b.active) return 'Mine pausiert. Betrieb fortsetzen, um weiterzugraben.';
+  if (!worker) return 'Kein Bergmann zugeteilt. Wohnraum schaffen oder einen anderen Betrieb pausieren.';
+  if (worker.task) return `${worker.name} beendet noch einen Transport an der Oberfläche.`;
+  if (Object.values(b.inventory).reduce((a, b) => a + b, 0) >= 40) return 'Minenlager voll (40 Waren). Wartet auf Abholung durch Träger.';
+  if (!b.autoMine && !s.underground.some(t => t.depth === (b.mineDepth ?? 1) && t.order === b.id)) return 'Kein Abbauauftrag. Stollen markieren oder automatische Erkundung einschalten.';
+  return `Keine erreichbare Abbaufront auf −${DEPTHS[b.mineDepth ?? 1]} m. Markiere einen verbundenen Stollen ab dem Schacht.`;
+}
 export function assignMiner(s: GameState, v: Villager, b: Building) {
   if (v.depth || v.mining || v.cargo || Object.values(b.inventory).reduce((a, b) => a + b, 0) >= 40) return;
   const depth = b.mineDepth ?? 1;
@@ -111,7 +128,7 @@ export function stepMiner(s: GameState, v: Villager, dt: number) {
     if (!routes.length) { v.depth = 0; v.mining = null; return; }
     trip.path = routes[0]; trip.stage = 'outbound'; return;
   }
-  if (trip.stage === 'outbound') { trip.stage = 'work'; trip.timer = 4 + trip.depth * 2; return; }
+  if (trip.stage === 'outbound') { v.facing = Math.atan2(trip.target.x - v.x, trip.target.z - v.z); trip.stage = 'work'; trip.timer = 4 + trip.depth * 2; return; }
   if (trip.stage === 'work') {
     trip.timer -= dt * (1 + (s.level - 1) * .1); if (trip.timer > 0) return;
     const t = undergroundAt(s, trip.target.x, trip.target.z, trip.depth)!;

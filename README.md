@@ -97,3 +97,7 @@ Der automatisierte Start-bis-Eisenwerkzeuge-Durchlauf benötigt mit Seed 42 etwa
 Erkundete Regionen werden aktuell gemeinsam im Speicher gehalten und lokal gespeichert. Sehr große Welten können Browser-Speicherquota, RAM und Leistung erreichen; es gibt noch kein Auslagern ferner Regionen. Untertage umfasst drei taktische Tiefenebenen, keine First-Person-Steuerung und kein frei verformbares 3D-Blockvolumen. Gewässer werden zusammenhängend erzeugt, aber nicht als Flüssigkeit zur Laufzeit simuliert. Keine Monster, Einstürze, Multiplayer oder vollständige Touch-Steuerung. Fertige Gebäude sind noch nicht abreißbar.
 
 Geometrie, Icons und Schriftdateien werden lokal ausgeliefert. Three.js und Vite mit TypeScript; DM Sans und Manrope über Fontsource. Keine externen Assets während des Spiels. Schriftlizenzen liegen in den jeweiligen npm-Paketen.
+
+### Bergleute finden
+
+Unter Tage zeigt der Kasten **Bergbau-Betrieb**, wer der Mine zugeteilt ist, wo die Person gerade arbeitet und warum sie gegebenenfalls wartet. **Bergmann zeigen** führt die Kamera zum tatsächlichen Aufenthaltsort. Helm, Spitzhacke und Namensmarkierung kennzeichnen die Figuren. Bei vollem Minenlager holen Träger die Waren ab; die Abholung wechselt fair zwischen Betrieben und Rohstoffen.

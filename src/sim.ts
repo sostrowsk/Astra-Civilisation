@@ -1,5 +1,5 @@
 import { CHUNK_W, CHUNK_H, key, hash, generateChunk, regionCoords, regionId, regionFor, randomSeed, terrainSample } from './generator.ts';
-import { openMine, ensureDepth, revealCave, assignMiner, stepMiner, validateUnderground, type UndergroundTile, type MiningTrip } from './mining.ts';
+import { mineStatus, openMine, ensureDepth, revealCave, assignMiner, stepMiner, validateUnderground, type UndergroundTile, type MiningTrip } from './mining.ts';
 export const ORIGINAL_WIDTH = CHUNK_W;
 export const ORIGINAL_HEIGHT = CHUNK_H;
 export const RESOURCES = ['wood', 'planks', 'stone', 'food', 'tools', 'knowledge', 'coal', 'copperOre', 'ironOre', 'goldOre', 'diamond', 'copper', 'iron', 'gold'] as const;
@@ -31,7 +31,7 @@ export const DEFINITIONS: Record<BuildingKind, { name: string; cost: Stock; desc
 };
 export type Biome = 'meadow' | 'forest' | 'highland' | 'desert';
 export interface Tile extends Point { biome: Biome; region: number; discovered: boolean; sapling: number;  height: number; kind: 'grass' | 'water'; waterway: 'river' | 'lake' | null; node: 'tree' | 'rock' | null; amount: number; road: boolean; variant: number }
-export interface Building extends Point { id: number; kind: BuildingKind; complete: boolean; delivered: Stock; inventory: Stock; progress: number; active: boolean; bridgeEntrance?: Point; metal?: 'iron' | 'copper' | 'gold'; study?: 'planks' | 'copper' | 'gold'; mineDepth?: number; autoMine?: boolean }
+export interface Building extends Point { id: number; kind: BuildingKind; complete: boolean; delivered: Stock; inventory: Stock; progress: number; active: boolean; bridgeEntrance?: Point; metal?: 'iron' | 'copper' | 'gold'; study?: 'planks' | 'copper' | 'gold'; mineDepth?: number; autoMine?: boolean; lastExportAt?: number; exportCursor?: number }
 export interface Task { kind: 'haul' | 'gather' | 'saw' | 'craft'; phase: 'pickup' | 'work' | 'drop'; sourceId?: number; destId: number; resource: Resource; amount: number; node?: Point; path: Point[]; timer: number }
 export interface Villager extends Point { id: number; name: string; job: number | null; task: Task | null; cargo: { resource: Resource; amount: number } | null; facing: number; depth: number; mining: MiningTrip | null }
 export interface GameState { version: 3; underground: UndergroundTile[]; level: number; regions: number[]; ecologyTick: number; woodGrown: number; seed: number; time: number; nextId: number; tiles: Tile[]; buildings: Building[]; villagers: Villager[]; milestones: BuildingKind[]; events: { time: number; message: string }[]; won: boolean; revision: number }
@@ -165,10 +165,17 @@ function assignCarrier(s: GameState, v: Villager) {
     const budget = Math.max(0, unreservedStock(s, r) - (b.kind === 'woodcutter' ? 0 : foundingReserve(s, r)));
     if (source && budget > 0 && assignHaul(s, v, source, b, r, Math.min(2, need, available(s, source, r), budget))) return;
   }
-  for (const b of s.buildings.filter(b => b.complete && !isStorage(b))) for (const r of RESOURCES) {
+  // Rotate between producers and goods. Fixed building order starves later mines
+  // whenever early woodcutters keep producing faster than carriers collect.
+  const producers = s.buildings.filter(b => b.complete && !isStorage(b))
+    .sort((a, b) => (a.lastExportAt ?? -1) - (b.lastExportAt ?? -1) || distance(v, a) - distance(v, b) || a.id - b.id);
+  for (const b of producers) for (let offset = 0; offset < RESOURCES.length; offset++) {
+    const index = ((b.exportCursor ?? 0) + offset) % RESOURCES.length, r = RESOURCES[index];
     if (available(s, b, r) <= 0 || recipeFor(s, b)?.fuel === r) continue;
     const dest = s.buildings.filter(isStorage).sort((a, c) => distance(b, a) - distance(b, c)).find(c => findPath(s, b, c) !== null);
-    if (dest && assignHaul(s, v, b, dest, r, Math.min(2, available(s, b, r)))) return;
+    if (dest && assignHaul(s, v, b, dest, r, Math.min(2, available(s, b, r)))) {
+      b.lastExportAt = s.time; b.exportCursor = (index + 1) % RESOURCES.length; return;
+    }
   }
 }
 function assignProducer(s: GameState, v: Villager, b: Building) {
@@ -284,11 +291,10 @@ export function buildingStatus(s: GameState, b: Building): string {
   }
   if (!b.active) return 'Betrieb pausiert';
   if (!DEFINITIONS[b.kind].producer) return b.kind === 'bridge' ? 'Brückenfeld begehbar' : 'Bereit';
+  if (b.kind === 'mine') return mineStatus(s, b);
   const worker = s.villagers.find(v => v.job === b.id);
   if (!worker) return 'Wartet auf freien Arbeiter';
   const recipe = recipeFor(s, b);
-  if (worker.mining) return `Unter Tage · −${[0, 12, 32, 64][worker.mining.depth]} m · ${worker.mining.stage === 'work' ? 'Abbau' : 'Unterwegs'}`;
-  if (b.kind === 'mine') return 'Wartet auf erreichbare Abbaufront oder Erkundung';
   if (worker.task) return recipe ? `${recipe.input ? NAMES[recipe.input] + ' → ' : ''}${NAMES[recipe.output]} wird produziert` : 'Rohstoffe werden gewonnen';
   if (RESOURCES.some(r => b.inventory[r] >= (recipe ? 24 : 16))) return 'Ausgang voll · wartet auf Transport';
   return recipe ? `Wartet auf ${recipe.fuel && b.inventory[recipe.fuel] < 1 ? NAMES[recipe.fuel] : recipe.input ? NAMES[recipe.input] : 'Arbeiter'}` : 'Kein erreichbares Vorkommen im Umkreis';
@@ -310,6 +316,8 @@ export function deserialize(raw: string): GameState {
   const ids = new Set<number>();
   for (const b of s.buildings) {
     if (!validPoint(b) || !integer(b.id) || ids.has(b.id) || !Object.hasOwn(DEFINITIONS, b.kind) || !validStock(b.inventory) || !validStock(b.delivered) || !finite(b.progress) || b.progress < 0 || b.progress > 1 || typeof b.active !== 'boolean' || typeof b.complete !== 'boolean') fail();
+    if (b.lastExportAt !== undefined && (!finite(b.lastExportAt) || b.lastExportAt < 0)) fail();
+    if (b.exportCursor !== undefined && (!integer(b.exportCursor) || b.exportCursor >= RESOURCES.length)) fail();
     ids.add(b.id);
   }
   if (s.buildings[0].kind !== 'camp' || !s.buildings[0].complete || s.nextId <= Math.max(...ids)) fail();
