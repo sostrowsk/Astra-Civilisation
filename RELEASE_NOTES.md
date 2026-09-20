@@ -1,5 +1,13 @@
 # Release Notes
 
+## 20. September 2026 · Bäume gezielt fällen
+
+- Beim Anklicken eines Baums lässt sich **Bevorzugt fällen** auswählen, um die Fläche für ein Gebäude freizumachen.
+- Markierte Bäume erhalten einen goldenen Rahmen und Vorrang vor der normalen Zielsuche. Reichweite, begehbare Wege, Personal und Lagerkapazität gelten weiterhin; laufende Aufträge werden zuerst beendet.
+- Das Holz wird regulär gewonnen und abtransportiert. Sobald der Baum vollständig gefällt ist, wird die Markierung entfernt und eine Meldung zur freien Fläche angezeigt.
+- Die Priorität lässt sich aufheben, bleibt beim Speichern und Laden erhalten und zeigt im Auswahlfenster den aktuellen Arbeits- oder Wartegrund.
+- Geprüft mit **71 erfolgreichen Tests**, TypeScript und Produktionsbuild sowie einer Browserprüfung für Auswahl, Markierung, Wartehinweis und Aufheben.
+
 ## 20. September 2026 · Wirtschaft, Handwerk und mehrere Spielstände
 
 ### Mehrere Welten und Neustart

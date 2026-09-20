@@ -312,6 +312,12 @@ export class World {
       grass.setColorAt(i, new THREE.Color(t.road ? '#c4b180' : t.biome === 'highland' && t.height > 6.2 ? '#e2e7df' : BIOMES[t.biome].ground).multiplyScalar(t.road ? 1 : .94 + t.variant * .12));
       const g = new THREE.Group(); g.position.set(wx(t.x), t.height, wz(t.z));
       if (t.node === 'tree') {
+        if (t.priorityFelling) {
+          for (const edge of [-.7, .7]) {
+            box(g, '#e5ad52', edge, .06, 0, .07, .08, 1.45);
+            box(g, '#e5ad52', 0, .06, edge, 1.45, .08, .07);
+          }
+        }
         const h = 1.25 + t.variant * .8;
         box(g, '#745038', 0, h / 2, 0, .26, h, .28);
         const foliage = BIOMES[t.biome].leaves;

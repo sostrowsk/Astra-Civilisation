@@ -32,6 +32,8 @@ Die Welt wächst nach Norden, Osten, Süden und Westen ohne feste Anzahl an Regi
 
 Brücken entstehen **feldweise** für jeweils vier Bretter und zwei Stein. Vom erreichbaren Ufer oder einer fertigen Brücke aus weiterbauen. Eine Brücke ist kein Pflichtziel mehr, weil nicht jede Startregion einen Fluss enthält.
 
+Um einen Bauplatz freizumachen: **Baum anklicken → Bevorzugt fällen**. Holzfäller bevorzugen markierte Bäume innerhalb ihrer normalen Reichweite von neun Feldern und tragen das Holz regulär ab. Laufende Arbeiten und Lieferungen werden zuerst beendet. Die goldene Markierung bleibt bis zum vollständigen Fällen erhalten; der Auftrag wird mitgespeichert. Im Auswahlfenster lassen sich die Priorität aufheben und Wartegründe ablesen, etwa fehlender Holzfäller, blockierter Weg oder volles Lager.
+
 ## Bergbau
 
 Ab dem **Dorf** stehen im Reiter **Bergbau** Mineneingang, Schmelzhütte und Schmiede bereit.

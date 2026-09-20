@@ -129,3 +129,9 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Browserprüfung in separater Sandbox bei 1280 × 720: vorhandene Manufaktur-Partie (Seed 42, 18 Bewohner) übernommen; neue Partie „QA Bergtal“ mit Seed 98765 angelegt; Neustart als dritte Partie mit identischem Seed und Pionierlager erstellt; umbenannt; zur ursprünglichen Partie gewechselt und Seite neu geöffnet. Die zuletzt gewählte Partie und alle drei Einträge blieben erhalten.
 - Löschdialog abgebrochen (Partie bleibt vorhanden), danach ausschließlich die eigens angelegten QA-Partien bestätigt gelöscht. Originalpartie erhalten. Dialogdarstellung visuell geprüft.
 - Speicherdaten und Metadaten einer Partie werden gemeinsam in einer IndexedDB-Transaktion geschrieben. Die Übernahme lässt den bisherigen einzelnen v3-Spielstand als unveränderte Rückfallkopie liegen. Spielstände bleiben lokal, ohne Cloud-Synchronisation.
+
+## Bäume bevorzugt fällen (20.09.2026)
+
+- 71 Tests erfolgreich, einschließlich fünf neuer Verhaltenstests: Vorrang vor näheren Bäumen bis zur vollständigen Rodung und bebaubare Fläche, bestehende Arbeit erhalten und Priorität aufheben, unerreichbare/entfernte Ziele überspringen, pausierte Betriebe und Lagergrenzen respektieren, Speichern/Laden und Validierung.
+- TypeScript-Prüfung und Produktionsbuild erfolgreich; bestehender Bundlegrößenhinweis unverändert.
+- Browserprüfung in separater Sandbox: Baum bei 4 / 10 ausgewählt, „Bevorzugt fällen“ aktiviert, goldenen Rahmen und Hinweis auf fehlenden Holzfäller gesehen, Priorität wieder aufgehoben. Die reguläre Partie blieb unberührt.

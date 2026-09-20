@@ -36,7 +36,7 @@ export const DEFINITIONS: Record<BuildingKind, { name: string; cost: Stock; desc
   outpost: { name: 'Außenposten', cost: goods(6, 12, 10), description: 'Gründe einen neuen Ort mindestens 5 Felder vom Lager entfernt. Erschließt in neuen Regionen einen Baubereich von 9 Feldern.' },
 };
 export type Biome = 'meadow' | 'forest' | 'highland' | 'desert';
-export interface Tile extends Point { biome: Biome; region: number; discovered: boolean; sapling: number;  height: number; kind: 'grass' | 'water'; waterway: 'river' | 'lake' | null; node: 'tree' | 'rock' | null; amount: number; road: boolean; variant: number }
+export interface Tile extends Point { priorityFelling?: boolean; biome: Biome; region: number; discovered: boolean; sapling: number;  height: number; kind: 'grass' | 'water'; waterway: 'river' | 'lake' | null; node: 'tree' | 'rock' | null; amount: number; road: boolean; variant: number }
 export interface Building extends Point { priority?: number; forgeProduct?: 'shears' | 'drill'; manufacture?: 'wire' | 'gears' | 'machineParts'; equipmentUses?: number; id: number; kind: BuildingKind; complete: boolean; delivered: Stock; inventory: Stock; progress: number; active: boolean; bridgeEntrance?: Point; metal?: 'iron' | 'copper' | 'gold'; study?: 'planks' | 'copper' | 'gold'; mineWorkers?: number; mineDepth?: number; autoMine?: boolean; lastExportAt?: number; exportCursor?: number }
 export interface Task { kind: 'haul' | 'gather' | 'saw' | 'craft'; phase: 'pickup' | 'work' | 'drop'; sourceId?: number; destId: number; resource: Resource; amount: number; node?: Point; path: Point[]; timer: number }
 export interface Villager extends Point { id: number; name: string; home?: number; job: number | null; task: Task | null; cargo: { resource: Resource; amount: number } | null; facing: number; depth: number; mining: MiningTrip | null }
@@ -193,6 +193,32 @@ function assignCarrier(s: GameState, v: Villager) {
     }
   }
 }
+function gatherPath(s: GameState, from: Point, node: Point): Point[] | undefined {
+  const spots = [{ x: node.x - 1, z: node.z }, { x: node.x + 1, z: node.z }, { x: node.x, z: node.z - 1 }, { x: node.x, z: node.z + 1 }];
+  return spots.map(p => findPath(s, from, p)).filter((p): p is Point[] => p !== null).sort((a, b) => a.length - b.length)[0];
+}
+export function markTreeForFelling(s: GameState, x: number, z: number, marked = true): boolean {
+  const tile = tileAt(s, x, z);
+  if (!tile?.discovered || tile.node !== 'tree' || tile.amount <= 0) return false;
+  if (marked) tile.priorityFelling = true; else delete tile.priorityFelling;
+  s.revision++;
+  return true;
+}
+export function treeFellingStatus(s: GameState, tile: Tile): string {
+  if (!tile.priorityFelling) return '';
+  const working = s.villagers.find(v => v.task?.kind === 'gather' && v.task.phase === 'work' && v.task.resource === 'wood' && v.task.node?.x === tile.x && v.task.node.z === tile.z);
+  if (working) return `${working.name} ${working.task!.path.length ? 'ist auf dem Weg zu diesem Baum' : 'fällt diesen Baum'}.`;
+  const nearby = s.buildings.filter(b => b.kind === 'woodcutter' && b.complete && distance(b, tile) <= 9);
+  if (!nearby.length) return 'Vorgemerkt · baue einen Holzfäller im Umkreis von 9 Feldern.';
+  const active = nearby.filter(b => b.active);
+  if (!active.length) return 'Vorgemerkt · der Holzfäller in Reichweite ist pausiert.';
+  const reachable = active.filter(b => gatherPath(s, b, tile) !== undefined);
+  if (!reachable.length) return 'Vorgemerkt · noch kein begehbarer Weg zum Baum.';
+  const staffed = reachable.filter(b => s.villagers.some(v => v.job === b.id));
+  if (!staffed.length) return 'Vorgemerkt · wartet auf einen zugeteilten Holzfäller.';
+  if (staffed.every(b => roomFor(s, b, 'wood') < 2)) return 'Vorgemerkt · wartet auf freien Platz im Holzfällerlager.';
+  return 'Bevorzugt vorgemerkt · laufende Arbeiten und Lieferungen werden zuerst beendet.';
+}
 function assignProducer(s: GameState, v: Villager, b: Building) {
   if (b.kind === 'mine') { assignMiner(s, v, b); return; }
   const recipe = recipeFor(s, b);
@@ -215,12 +241,11 @@ function assignProducer(s: GameState, v: Villager, b: Building) {
   const resource = b.kind === 'quarry' ? 'stone' : 'wood';
   if (roomFor(s, b, resource) < 2) return;
   const nodes = s.tiles.filter(t => t.node === (resource === 'stone' ? 'rock' : 'tree') && t.amount > 0 && distance(b, t) <= 9)
-    .sort((a, c) => distance(v, a) - distance(v, c));
+    .sort((a, c) => Number(!!c.priorityFelling) - Number(!!a.priorityFelling) || distance(v, a) - distance(v, c));
   for (const node of nodes) {
-    const spots = [{ x: node.x - 1, z: node.z }, { x: node.x + 1, z: node.z }, { x: node.x, z: node.z - 1 }, { x: node.x, z: node.z + 1 }];
-    const paths = spots.map(p => findPath(s, v, p)).filter((p): p is Point[] => p !== null).sort((a, c) => a.length - c.length);
-    if (!paths.length) continue;
-    v.task = { kind: 'gather', phase: 'work', destId: b.id, resource, amount: 2, node: { x: node.x, z: node.z }, path: paths[0], timer: resource === 'stone' ? 5 : 4 };
+    const path = gatherPath(s, v, node);
+    if (!path) continue;
+    v.task = { kind: 'gather', phase: 'work', destId: b.id, resource, amount: 2, node: { x: node.x, z: node.z }, path, timer: resource === 'stone' ? 5 : 4 };
     return;
   }
 }
@@ -239,7 +264,10 @@ function finishTask(s: GameState, v: Villager) {
     const node = tileAt(s, t.node!.x, t.node!.z), amount = Math.min(t.amount, node.amount);
     if (!amount) { v.task = null; return; }
     node.amount -= amount; recordFlow(s, 'produced', t.resource, amount);
-    if (!node.amount) { node.node = null; s.revision++; }
+    if (!node.amount) {
+      if (node.priorityFelling) event(s, `Baum bei ${node.x} / ${node.z} gefällt · die Fläche ist frei.`);
+      delete node.priorityFelling; node.node = null; s.revision++;
+    }
     t.amount = amount; v.cargo = { resource: t.resource, amount };
     const dest = s.buildings.find(b => b.id === t.destId)!;
     t.phase = 'drop'; t.path = findPath(s, v, dest) ?? [];
@@ -351,6 +379,7 @@ export function deserialize(raw: string): GameState {
   if (legacy && Array.isArray(s.buildings)) for (const b of s.buildings) for (const a of [b.inventory, b.delivered]) if (a) for (const r of ['shears', 'drill', 'wool', 'cloth', 'clothes', 'wire', 'gears', 'machineParts'] as const) a[r] ??= 0;
   if (!s || s.version !== 3 || !integer(s.seed) || !finite(s.time) || s.time < 0 || !integer(s.nextId) || !integer(s.revision) || typeof s.won !== 'boolean' || !Array.isArray(s.tiles) || s.tiles.length !== s.regions?.length * CHUNK_W * CHUNK_H || !Array.isArray(s.buildings) || !s.buildings.length || s.buildings.length > s.tiles.length || !Array.isArray(s.villagers) || s.villagers.length < 10 || s.villagers.length > 128 || !Array.isArray(s.milestones) || !Array.isArray(s.events)) fail();
   for (const [i, t] of s.tiles.entries()) if (!validPoint(t) || !inside(t.x, t.z) || !['grass', 'water'].includes(t.kind) || ![null, 'tree', 'rock'].includes(t.node) || !integer(t.amount) || !finite(t.height) || t.height < 0 || t.height > 20 || !finite(t.variant) || typeof t.road !== 'boolean') fail();
+  for (const t of s.tiles) if (t.priorityFelling !== undefined && (typeof t.priorityFelling !== 'boolean' || (t.priorityFelling && (!t.discovered || t.node !== 'tree' || !t.amount)))) fail();
   if (!integer(s.level) || s.level < 1 || s.level > 5 || !Array.isArray(s.regions) || !s.regions.includes(0) || new Set(s.regions).size !== s.regions.length || !s.regions.every(id => integer(id) && Number.isSafeInteger(id)) || !integer(s.ecologyTick) || !integer(s.woodGrown)) fail();
   for (const t of s.tiles) if (!Object.hasOwn(BIOMES, t.biome) || t.region !== regionFor(t.x, t.z) || typeof t.discovered !== 'boolean' || t.discovered !== s.regions.includes(t.region) || !integer(t.sapling)) fail();
   const ids = new Set<number>();

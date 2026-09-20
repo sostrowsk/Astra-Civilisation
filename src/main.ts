@@ -8,7 +8,7 @@ import { browserSaveStore, readStoredGame } from './persistence.ts';
 import { SaveLibrary, type SavedWorld } from './save-library.ts';
 import { knownRegions, regionInfo, BIOMES, ERAS, populationCap, civilisationProgress, advanceCivilisation, expeditionStatus, explore, worldBounds, spendableStock, workerTarget } from './sim.ts';
 import { World } from './world.ts';
-import { createGame, step, stock, place, placement, tileAt, buildingAt, buildingStatus, cancelConstruction, serialize, deserialize, DEFINITIONS, NAMES, RESOURCES, type GameState, type Tool, type Point, type BuildingKind, type Building } from './sim.ts';
+import { createGame, step, stock, place, placement, markTreeForFelling, treeFellingStatus, tileAt, buildingAt, buildingStatus, cancelConstruction, serialize, deserialize, DEFINITIONS, NAMES, RESOURCES, type GameState, type Tool, type Point, type BuildingKind, type Building } from './sim.ts';
 
 const ICONS: Record<string, string> = {
   sheepfold: '<path d="M5 17v5m12-5v5M4 10c-2-5 5-8 8-4 5-3 9 2 6 6v5H5V9Zm14-2h3v6h-3"/>',
@@ -173,7 +173,14 @@ function updateInspector() {
       if (!b.complete) el('cancel-construction').onclick = () => { cancelConstruction(state, b.id); selected = null; world.selected = null; inspectorKey = ''; updateUI(); toast('Baustelle abgebrochen. Material wird zurückgeführt.'); };
       else if (DEFINITIONS[b.kind].producer || b.kind === 'forester') el('toggle-production').onclick = () => { b.active = !b.active; updateInspector(); };
     } else if (t?.node) {
-      panel.innerHTML = `${close}<div class="eyebrow">ENTDECKT <span>${t.x} / ${t.z}</span></div><div class="inspector-icon">${icon(t.node === 'tree' ? 'woodcutter' : 'stone')}</div><h2>${t.node === 'tree' ? 'Ein Stück Wald' : 'Steinvorkommen'}</h2><div class="biome-label">${BIOMES[t.biome].name} · ${regionInfo(state, t.region).name}</div><p>${t.node === 'tree' ? 'Ein Holzfäller in der Nähe kann diesen Baum abbauen. Danach wird das Feld frei.' : 'Baue einen Steinbruch in der Nähe. Ein Arbeiter trägt den gewonnenen Stein zurück.'}</p><div class="deposit-amount" id="deposit-amount"></div>`;
+      panel.innerHTML = `${close}<div class="eyebrow">ENTDECKT <span>${t.x} / ${t.z}</span></div><div class="inspector-icon">${icon(t.node === 'tree' ? 'woodcutter' : 'stone')}</div><h2>${t.node === 'tree' ? 'Ein Stück Wald' : 'Steinvorkommen'}</h2><div class="biome-label">${BIOMES[t.biome].name} · ${regionInfo(state, t.region).name}</div><p>${t.node === 'tree' ? 'Ein Holzfäller in der Nähe kann diesen Baum abbauen. Danach wird das Feld frei.' : 'Baue einen Steinbruch in der Nähe. Ein Arbeiter trägt den gewonnenen Stein zurück.'}</p><div class="deposit-amount" id="deposit-amount"></div>${t.node === 'tree' ? '<button class="primary" id="priority-felling">Bevorzugt fällen</button><p id="felling-status" aria-live="polite"></p>' : ''}`;
+      if (t.node === 'tree') el('priority-felling').onclick = () => {
+        const marked = !t.priorityFelling;
+        if (markTreeForFelling(state, t.x, t.z, marked)) {
+          updateInspector(); save();
+          toast(marked ? 'Baum zum bevorzugten Fällen vorgemerkt.' : 'Fällpriorität aufgehoben. Eine bereits begonnene Arbeit wird beendet.');
+        }
+      };
     } else if (t) {
       panel.innerHTML = `${close}<div class="eyebrow">DEIN TAL <span>${t.x} / ${t.z}</span></div><div class="inspector-icon">${icon(t.kind === 'water' ? 'bridge' : 'compass')}</div><h2>${t.kind === 'water' ? t.waterway === 'lake' ? 'Ein stiller See' : 'Ein Flusslauf' : t.road ? 'Ein guter Weg' : BIOMES[t.biome].name}</h2><p class="biome-note">${regionInfo(state, t.region).name} · ${t.sapling ? 'Ein junger Baum wächst heran.' : BIOMES[t.biome].description}</p><p>${t.kind === 'water' ? 'Der Fluss trennt die beiden Ufer. Eine Brücke öffnet eurer Siedlung neue Wege.' : 'Wähle unten ein Gebäude und mache aus diesem Feld einen Teil deiner Siedlung.'}</p>`;
     } else if (state.milestones.length) {
@@ -197,6 +204,10 @@ function updateInspector() {
       el('building-details').innerHTML = `<div class="inventory-label">DEINE BERGMANN-SIEDLUNG</div><p>${residents.length} / 4 Wohnplätze belegt</p><p>${residents.map(v => escape(v.name)).join(', ') || 'Noch keine Bewohner eingezogen. Prüfe die Bevölkerungsgrenze.'}</p><p>${residents.filter(v => state.buildings.some(m => m.id === v.job && m.kind === 'mine')).length} im Bergbau beschäftigt</p><p>Nahe Mine auswählen und bis zu vier Bergleute einstellen. Ein Lagerhaus verkürzt den Abtransport.</p>`;
     }
     if ((DEFINITIONS[b.kind].producer || b.kind === 'forester') && b.complete) el('toggle-production').textContent = b.active ? 'Betrieb pausieren' : 'Betrieb fortsetzen';
+  }
+  if (t?.node === 'tree' && !b && !tool) {
+    el('priority-felling').textContent = t.priorityFelling ? 'Fällpriorität aufheben' : 'Bevorzugt fällen';
+    el('felling-status').textContent = treeFellingStatus(state, t);
   }
   if (t?.node && !b && !tool) el('deposit-amount').textContent = `${t.amount} ${t.node === 'tree' ? 'Holz' : 'Stein'} verfügbar`;
 }
