@@ -102,3 +102,12 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Bergleute tragen einen sichtbaren Helm und eine animierte Spitzhacke. Vergrößerte Untertage-Figuren und Namensmarkierungen machen sie im Gelände auffindbar.
 - Laufende Partie: Milo 3 in Mine 10 / −40 transportierte nach der Korrektur wieder Eisenerz auf −12 m. Separate Browserprüfung: Jonas sichtbar beim Graben mit Helm, Spitzhacke und Namensmarkierung; Kamerasprung und Zoom erfolgreich. Screenshot: `mining-workers-preview.png`. Keine Browserwarnungen/-fehler im Testfenster.
 - **38 Tests erfolgreich**, darunter dauerhaft volle frühe Holzfäller gegen eine volle Mine, faire Ausfuhr von Kohle neben Stein, Erhalt der Rohstoffe, deterministisches Laden der Transportverteilung und zutreffende Statusmeldungen.
+
+## Bergmann-Siedlungen · 20.09.2026
+
+- 46 Verhaltenstests erfolgreich, darunter acht neue Prüfungen: Hausbau mit echten Lieferungen und Kosten, vier Einwohner, Priorität naher Minen, Wechsel aus anderem Betrieb nach Abschluss einer Aufgabe, parallele exklusive Abbaufronten, Rohstoffbilanz, Reduzierung/Pause mit Ladungsrückgabe, Lagerplatzreservierung, Wachstum bis 96 und kompatible v3-Spielstände.
+- `npm run build` und `git diff --check` erfolgreich. Bestehender Hinweis auf Bundle über 500 kB unverändert.
+- Browser: separate Testpartie mit finanziertem Welt-Fixture (Seed 42), Haus bei 7/10 und Mine bei 10/10 über die Bauoberfläche errichtet. Tatsächliche Lieferungen, Anstieg von 10 auf 14 Bewohner, Umschalten von 1 auf 4 Arbeitsplätze, vier sichtbare Bergleute (Alva, Ada, Ella, Finn) unter Tage, paralleler Abbau und Rücktransport beobachtet.
+- Testpartie gespeichert und ohne Fixture-Parameter neu geladen: Haus, 14 Bewohner, Sollbesetzung 4 und laufende Mannschaft erhalten. Kamerasprung zu Finn erhält dessen Auswahl. Wechsel zur Auftragstiefe −32 m und Kamerasprung zum noch auf −12 m arbeitenden Finn verändern den zukünftigen Arbeitsauftrag nicht.
+- Hausmodell mit Schieferdach, Lampe und Bergbauwerkzeug visuell geprüft; Mannschaftsbedienung bei 1280 × 720 geprüft. Keine Browserfehler oder Warnungen.
+- Bestehende Nutzerpartie mit Seed 3530829716 und 68 Regionen wird weiterhin geladen und zeigt die neue Grenze 64/96; keine Rücksetzung. Screenshots: `mining-settlement-preview.png`.

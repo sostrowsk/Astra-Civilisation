@@ -83,7 +83,9 @@ export function markMining(s: GameState, mineId: number, depth: number, from: Po
 }
 function dist(a: Point, b: Point) { return Math.abs(a.x - b.x) + Math.abs(a.z - b.z); }
 export function mineStatus(s: GameState, b: Building) {
-  const worker = s.villagers.find(v => v.job === b.id), trip = worker?.mining;
+  const staff = s.villagers.filter(v => v.job === b.id);
+  const worker = staff.find(v => v.mining) ?? staff[0], trip = worker?.mining;
+  if (b.complete && staff.filter(v => v.mining).length > 1) return `${staff.filter(v => v.mining).length} Bergleute im Einsatz · Beim Abbau: ${staff.filter(v => v.mining?.stage === 'work').length} · Rücktransport: ${staff.filter(v => v.mining?.stage === 'return').length}.`;
   if (!b.complete) return 'Der Mineneingang wird noch gebaut.';
   if (trip) {
     const depth = `−${DEPTHS[trip.depth]} m`;
@@ -100,7 +102,9 @@ export function mineStatus(s: GameState, b: Building) {
   return `Keine erreichbare Abbaufront auf −${DEPTHS[b.mineDepth ?? 1]} m. Markiere einen verbundenen Stollen ab dem Schacht.`;
 }
 export function assignMiner(s: GameState, v: Villager, b: Building) {
-  if (v.depth || v.mining || v.cargo || Object.values(b.inventory).reduce((a, b) => a + b, 0) >= 40) return;
+  // Reserve room for every in-flight load so a team cannot overflow the mine store.
+  const incoming = s.villagers.filter(n => n.mining?.mineId === b.id).length * 2;
+  if (v.depth || v.mining || v.cargo || Object.values(b.inventory).reduce((a, b) => a + b, 0) + incoming + 2 > 40) return;
   const depth = b.mineDepth ?? 1;
   ensureDepth(s, depth);
   const assigned = new Set(s.villagers.filter(n => n.mining?.depth === depth).map(n => key(n.mining!.target.x, n.mining!.target.z)));

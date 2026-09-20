@@ -6,7 +6,7 @@ export const RESOURCES = ['wood', 'planks', 'stone', 'food', 'tools', 'knowledge
 export type Resource = typeof RESOURCES[number];
 export type Stock = Record<Resource, number>;
 export type Point = { x: number; z: number };
-export type BuildingKind = 'camp' | 'woodcutter' | 'sawmill' | 'quarry' | 'house' | 'warehouse' | 'bridge' | 'outpost' | 'farm' | 'forester' | 'workshop' | 'academy' | 'townhall' | 'mine' | 'smelter' | 'forge';
+export type BuildingKind = 'camp' | 'woodcutter' | 'sawmill' | 'quarry' | 'house' | 'miningHouse' | 'warehouse' | 'bridge' | 'outpost' | 'farm' | 'forester' | 'workshop' | 'academy' | 'townhall' | 'mine' | 'smelter' | 'forge';
 export type Tool = Exclude<BuildingKind, 'camp'> | 'road';
 export const NAMES: Record<Resource, string> = { wood: 'Holz', planks: 'Bretter', stone: 'Stein', food: 'Nahrung', tools: 'Werkzeuge', knowledge: 'Wissen', coal: 'Kohle', copperOre: 'Kupfererz', ironOre: 'Eisenerz', goldOre: 'Golderz', diamond: 'Diamanten', copper: 'Kupfer', iron: 'Eisen', gold: 'Gold' };
 export const goods = (wood = 0, planks = 0, stone = 0, food = 0, tools = 0, knowledge = 0): Stock => ({ wood, planks, stone, food, tools, knowledge, coal: 0, copperOre: 0, ironOre: 0, goldOre: 0, diamond: 0, copper: 0, iron: 0, gold: 0 });
@@ -16,7 +16,8 @@ export const DEFINITIONS: Record<BuildingKind, { name: string; cost: Stock; desc
   woodcutter: { name: 'Holzfäller', cost: goods(4, 0, 2), description: 'Ein Arbeiter fällt Bäume im Umkreis von 9 Feldern und trägt das Holz zur Hütte.', producer: true },
   sawmill: { name: 'Sägewerk', cost: goods(5, 0, 3), description: 'Ein Arbeiter holt Holz und verarbeitet 1 Holz zu 2 Brettern.', producer: true },
   quarry: { name: 'Steinbruch', cost: goods(4, 2, 0), description: 'Ein Arbeiter gewinnt Stein aus Vorkommen im Umkreis von 9 Feldern.', producer: true },
-  house: { name: 'Wohnhaus', cost: goods(3, 4, 2), description: 'Ein Zuhause für zwei neue Bewohner. Die Bevölkerungsgrenze steigt mit deiner Zivilisation auf bis zu 64.' },
+  house: { name: 'Wohnhaus', cost: goods(3, 4, 2), description: 'Ein Zuhause für zwei neue Bewohner. Die Bevölkerungsgrenze steigt mit deiner Zivilisation auf bis zu 96.' },
+  miningHouse: { name: 'Bergmannshaus', cost: goods(6, 10, 8), description: 'Vier Wohnplätze. Bewohner bevorzugen Minen in 12 Feldern Entfernung. Stelle dort bis zu vier Bergleute ein; freie Bewohner helfen beim Transport.', tier: 2 },
   warehouse: { name: 'Lagerhaus', cost: goods(4, 4, 3), description: 'Sammelt Waren aus nahen Betrieben und verkürzt Transportwege.' },
   bridge: { name: 'Brücke', cost: goods(0, 4, 2), description: 'Ein Brückenfeld über Wasser. Vom erreichbaren Ufer aus Feld für Feld weiterbauen.' },
   farm: { name: 'Bauernhof', cost: goods(6, 8, 4), description: 'Erzeugt Nahrung. Auf Wiesen besonders ertragreich, in trockener Steppe langsamer.', producer: true, tier: 2 },
@@ -24,16 +25,16 @@ export const DEFINITIONS: Record<BuildingKind, { name: string; cost: Stock; desc
   workshop: { name: 'Werkstatt', cost: goods(8, 16, 20, 10), description: 'Verarbeitet 1 Stein zu 1 Werkzeug. Werkzeuge ermöglichen anspruchsvolle Expeditionen.', producer: true, tier: 3 },
   academy: { name: 'Akademie', cost: goods(8, 24, 24, 12), description: 'Erzeugt Wissen aus Brettern, Kupfer oder Gold. Forschungsrohstoff im Gebäude auswählen.', producer: true, tier: 3 },
   townhall: { name: 'Rathaus', cost: goods(12, 30, 40, 20, 8), description: 'Das Zentrum einer wachsenden Stadt. Zusätzlicher Lagerstandort und Meilenstein des Aufstiegs.', tier: 3 },
-  mine: { name: 'Mineneingang', cost: goods(6, 8, 6), description: 'Ein Bergmann erkundet Höhlen und gräbt markierte Stollen. Drei Tiefen mit Kohle und Erzadern.', producer: true, tier: 2 },
+  mine: { name: 'Mineneingang', cost: goods(6, 8, 6), description: 'Bis zu vier Bergleute erkunden Höhlen und graben gemeinsam markierte Stollen. Besetzung am Gebäude einstellen. Drei Tiefen mit Kohle und Erzadern.', producer: true, tier: 2 },
   smelter: { name: 'Schmelzhütte', cost: goods(6, 12, 14), description: 'Verarbeitet 1 Erz und 1 Kohle zu einem Metallbarren. Metall im Gebäude auswählen.', producer: true, tier: 2 },
   forge: { name: 'Schmiede', cost: goods(6, 14, 12), description: 'Verarbeitet 1 Eisenbarren zu 3 Werkzeugen.', producer: true, tier: 2 },
   outpost: { name: 'Außenposten', cost: goods(6, 12, 10), description: 'Gründe einen neuen Ort mindestens 5 Felder vom Lager entfernt. Erschließt in neuen Regionen einen Baubereich von 9 Feldern.' },
 };
 export type Biome = 'meadow' | 'forest' | 'highland' | 'desert';
 export interface Tile extends Point { biome: Biome; region: number; discovered: boolean; sapling: number;  height: number; kind: 'grass' | 'water'; waterway: 'river' | 'lake' | null; node: 'tree' | 'rock' | null; amount: number; road: boolean; variant: number }
-export interface Building extends Point { id: number; kind: BuildingKind; complete: boolean; delivered: Stock; inventory: Stock; progress: number; active: boolean; bridgeEntrance?: Point; metal?: 'iron' | 'copper' | 'gold'; study?: 'planks' | 'copper' | 'gold'; mineDepth?: number; autoMine?: boolean; lastExportAt?: number; exportCursor?: number }
+export interface Building extends Point { id: number; kind: BuildingKind; complete: boolean; delivered: Stock; inventory: Stock; progress: number; active: boolean; bridgeEntrance?: Point; metal?: 'iron' | 'copper' | 'gold'; study?: 'planks' | 'copper' | 'gold'; mineWorkers?: number; mineDepth?: number; autoMine?: boolean; lastExportAt?: number; exportCursor?: number }
 export interface Task { kind: 'haul' | 'gather' | 'saw' | 'craft'; phase: 'pickup' | 'work' | 'drop'; sourceId?: number; destId: number; resource: Resource; amount: number; node?: Point; path: Point[]; timer: number }
-export interface Villager extends Point { id: number; name: string; job: number | null; task: Task | null; cargo: { resource: Resource; amount: number } | null; facing: number; depth: number; mining: MiningTrip | null }
+export interface Villager extends Point { id: number; name: string; home?: number; job: number | null; task: Task | null; cargo: { resource: Resource; amount: number } | null; facing: number; depth: number; mining: MiningTrip | null }
 export interface GameState { version: 3; underground: UndergroundTile[]; level: number; regions: number[]; ecologyTick: number; woodGrown: number; seed: number; time: number; nextId: number; tiles: Tile[]; buildings: Building[]; villagers: Villager[]; milestones: BuildingKind[]; events: { time: number; message: string }[]; won: boolean; revision: number }
 
 const distance = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.z - b.z);
@@ -77,9 +78,9 @@ export function createGame(seed = randomSeed()): GameState {
   return s;
 }
 const PEOPLE = ['Alva', 'Bruno', 'Clara', 'Emil', 'Frida', 'Jonas', 'Lina', 'Milo', 'Nora', 'Oskar', 'Ada', 'Ben', 'Ella', 'Finn', 'Greta', 'Hugo', 'Ida', 'Jona', 'Kira', 'Leo'];
-function addVillager(s: GameState) {
+function addVillager(s: GameState, home?: Building) {
   const i = s.villagers.length;
-  s.villagers.push({ id: i + 1, name: PEOPLE[i % PEOPLE.length] + (i >= 20 ? ` ${Math.floor(i / 20) + 1}` : ''), x: i < 10 ? 7 + (i % 4) : 8, z: i < 10 ? 13 + Math.floor(i / 4) : 12, job: null, task: null, cargo: null, facing: 0, depth: 0, mining: null });
+  s.villagers.push({ id: i + 1, name: PEOPLE[i % PEOPLE.length] + (i >= 20 ? ` ${Math.floor(i / 20) + 1}` : ''), x: i < 10 ? 7 + (i % 4) : 8, z: i < 10 ? 13 + Math.floor(i / 4) : 12, job: null, task: null, cargo: null, facing: 0, depth: 0, mining: null, ...(home ? { home: home.id, x: home.x, z: home.z } : {}) });
 }
 export function event(s: GameState, message: string) {
   s.events.unshift({ time: s.time, message }); s.events.length = Math.min(s.events.length, 30);
@@ -252,18 +253,34 @@ export function step(s: GameState, dt: number) {
       if (!s.milestones.includes(b.kind)) s.milestones.push(b.kind);
       event(s, `${DEFINITIONS[b.kind].name} fertiggestellt!`);
       if (b.kind === 'mine') openMine(s, b);
-      if (b.kind === 'house') welcomeResidents(s);
+      if (b.kind === 'house' || b.kind === 'miningHouse') welcomeResidents(s);
       if (b.kind === 'outpost' && !s.won) { s.won = true; event(s, 'Ein neues Kapitel beginnt. Euer erster Außenposten steht!'); }
     }
   }
   if (Math.floor(s.time / 20) > s.ecologyTick) { s.ecologyTick = Math.floor(s.time / 20); regrowForest(s); }
-  // Each active workshop claims one idle person; at least two people remain carriers.
-  for (const v of s.villagers) if (v.job && !v.task && !v.mining && !s.buildings.find(b => b.id === v.job)?.active) v.job = null;
-  for (const b of s.buildings.filter(b => b.complete && b.active && DEFINITIONS[b.kind].producer)) {
-    if (s.villagers.some(v => v.job === b.id)) continue;
+  // Finish cargo trips before releasing staff; keep at least two general carriers.
+  const producers = s.buildings.filter(b => b.complete && b.active && DEFINITIONS[b.kind].producer);
+  for (const b of s.buildings.filter(b => DEFINITIONS[b.kind].producer)) {
+    const staff = s.villagers.filter(v => v.job === b.id);
+    let surplus = staff.length - (b.active && b.complete ? workerTarget(b) : 0);
+    for (const v of [...staff].reverse()) if (surplus > 0 && !v.task && !v.mining) { v.job = null; surplus--; }
+  }
+  const room = (b: Building) => s.villagers.filter(v => v.job === b.id).length < workerTarget(b);
+  // Mining-house residents get first choice of reachable mines near their home.
+  for (const v of s.villagers.filter(v => v.home && !v.task && !v.mining && !producers.some(b => b.id === v.job && b.kind === 'mine'))) {
+    if (v.job === null && s.villagers.filter(n => n.job === null).length <= 2) continue;
+    const home = s.buildings.find(b => b.id === v.home)!;
+    const mine = producers.filter(b => b.kind === 'mine' && room(b) && distance(b, home) <= 12)
+      .sort((a, b) => distance(a, home) - distance(b, home) || a.id - b.id).find(b => findPath(s, v, b) !== null);
+    if (mine) v.job = mine.id;
+  }
+  // Fill one place per business before assigning additional mine staff.
+  for (let slot = 0; slot < 4; slot++) for (const b of producers) {
+    if (workerTarget(b) <= slot || s.villagers.filter(v => v.job === b.id).length > slot) continue;
     const unemployed = s.villagers.filter(v => v.job === null);
-    const worker = unemployed.find(v => !v.task && !v.mining);
-    if (worker && unemployed.length > 2) worker.job = b.id;
+    if (unemployed.length <= 2) continue;
+    const worker = unemployed.filter(v => !v.task && !v.mining).sort((a, c) => distance(a, b) - distance(c, b) || a.id - c.id).find(v => findPath(s, v, b) !== null);
+    if (worker) worker.job = b.id;
   }
   for (const v of s.villagers) {
     if (v.mining) { stepMiner(s, v, dt); continue; }
@@ -309,7 +326,7 @@ export function deserialize(raw: string): GameState {
   const integer = (n: unknown): n is number => finite(n) && Number.isInteger(n) && n >= 0;
   const validStock = (a: Stock) => a && RESOURCES.every(r => integer(a[r]));
   const validPoint = (p: Point, whole = true) => p && finite(p.x) && finite(p.z) && !!tileAt(s, Math.round(p.x), Math.round(p.z)) && (!whole || (Number.isInteger(p.x) && Number.isInteger(p.z)));
-  if (!s || s.version !== 3 || !integer(s.seed) || !finite(s.time) || s.time < 0 || !integer(s.nextId) || !integer(s.revision) || typeof s.won !== 'boolean' || !Array.isArray(s.tiles) || s.tiles.length !== s.regions?.length * CHUNK_W * CHUNK_H || !Array.isArray(s.buildings) || !s.buildings.length || s.buildings.length > s.tiles.length || !Array.isArray(s.villagers) || s.villagers.length < 10 || s.villagers.length > 64 || !Array.isArray(s.milestones) || !Array.isArray(s.events)) fail();
+  if (!s || s.version !== 3 || !integer(s.seed) || !finite(s.time) || s.time < 0 || !integer(s.nextId) || !integer(s.revision) || typeof s.won !== 'boolean' || !Array.isArray(s.tiles) || s.tiles.length !== s.regions?.length * CHUNK_W * CHUNK_H || !Array.isArray(s.buildings) || !s.buildings.length || s.buildings.length > s.tiles.length || !Array.isArray(s.villagers) || s.villagers.length < 10 || s.villagers.length > 96 || !Array.isArray(s.milestones) || !Array.isArray(s.events)) fail();
   for (const [i, t] of s.tiles.entries()) if (!validPoint(t) || !inside(t.x, t.z) || !['grass', 'water'].includes(t.kind) || ![null, 'tree', 'rock'].includes(t.node) || !integer(t.amount) || !finite(t.height) || t.height < 0 || t.height > 20 || !finite(t.variant) || typeof t.road !== 'boolean') fail();
   if (!integer(s.level) || s.level < 1 || s.level > 4 || !Array.isArray(s.regions) || !s.regions.includes(0) || new Set(s.regions).size !== s.regions.length || !s.regions.every(id => integer(id) && Number.isSafeInteger(id)) || !integer(s.ecologyTick) || !integer(s.woodGrown)) fail();
   for (const t of s.tiles) if (!Object.hasOwn(BIOMES, t.biome) || t.region !== regionFor(t.x, t.z) || typeof t.discovered !== 'boolean' || t.discovered !== s.regions.includes(t.region) || !integer(t.sapling)) fail();
@@ -318,12 +335,14 @@ export function deserialize(raw: string): GameState {
     if (!validPoint(b) || !integer(b.id) || ids.has(b.id) || !Object.hasOwn(DEFINITIONS, b.kind) || !validStock(b.inventory) || !validStock(b.delivered) || !finite(b.progress) || b.progress < 0 || b.progress > 1 || typeof b.active !== 'boolean' || typeof b.complete !== 'boolean') fail();
     if (b.lastExportAt !== undefined && (!finite(b.lastExportAt) || b.lastExportAt < 0)) fail();
     if (b.exportCursor !== undefined && (!integer(b.exportCursor) || b.exportCursor >= RESOURCES.length)) fail();
+    if (b.mineWorkers !== undefined && (b.kind !== 'mine' || !integer(b.mineWorkers) || b.mineWorkers < 1 || b.mineWorkers > 4)) fail();
     ids.add(b.id);
   }
   if (s.buildings[0].kind !== 'camp' || !s.buildings[0].complete || s.nextId <= Math.max(...ids)) fail();
   const peopleIds = new Set<number>();
   for (const v of s.villagers) {
     if (!validPoint(v, false) || !integer(v.id) || peopleIds.has(v.id) || typeof v.name !== 'string' || v.name.length > 40 || !finite(v.facing) || (v.job !== null && !ids.has(v.job))) fail();
+    if (v.home !== undefined && !s.buildings.some(b => b.id === v.home && b.kind === 'miningHouse' && b.complete)) fail();
     peopleIds.add(v.id);
     if (v.cargo && (!RESOURCES.includes(v.cargo.resource) || !integer(v.cargo.amount) || v.cargo.amount < 1 || v.cargo.amount > 2)) fail();
     if (v.task) {
@@ -333,6 +352,7 @@ export function deserialize(raw: string): GameState {
   }
   if (!s.milestones.every(k => Object.hasOwn(DEFINITIONS, k)) || s.events.length > 30 || !s.events.every(e => finite(e.time) && typeof e.message === 'string' && e.message.length < 500)) fail();
   if (new Set(s.tiles.map(t => key(t.x, t.z))).size !== s.tiles.length) fail();
+  if (s.buildings.some(b => b.kind === 'miningHouse' && s.villagers.filter(v => v.home === b.id).length > 4)) fail();
   validateUnderground(s);
   return s;
 }
@@ -359,15 +379,21 @@ export const ERAS = [
   { name: 'Pionierlager', cap: 20, unlocks: 'Holz, Stein und die erste Brücke' },
   { name: 'Dorf', cap: 32, unlocks: 'Bauernhof, Försterei und Bergbau · 10 % schnelleres Arbeiten' },
   { name: 'Kleinstadt', cap: 48, unlocks: 'Werkstatt, Akademie und Rathaus · 20 % schnelleres Arbeiten' },
-  { name: 'Handelsstadt', cap: 64, unlocks: 'Ferne Expeditionen und 64 Bewohner · 30 % schnelleres Arbeiten' },
+  { name: 'Handelsstadt', cap: 96, unlocks: 'Ferne Expeditionen und 96 Bewohner · 30 % schnelleres Arbeiten' },
 ];
 export function worldBounds(s: GameState) {
   const regions = s.regions.map(id => regionInfo(s, id)), minX = Math.min(...regions.map(r => r.x)), minZ = Math.min(...regions.map(r => r.z));
   return { minX, minZ, width: Math.max(...regions.map(r => r.x + CHUNK_W)) - minX, height: Math.max(...regions.map(r => r.z + CHUNK_H)) - minZ };
 }
 export function populationCap(s: GameState) { return ERAS[s.level - 1].cap; }
-export function housingCapacity(s: GameState) { return Math.min(populationCap(s), 10 + s.buildings.filter(b => b.complete && b.kind === 'house').length * 2); }
-function welcomeResidents(s: GameState) { while (s.villagers.length < housingCapacity(s)) addVillager(s); }
+export function workerTarget(b: Building) { return b.kind === 'mine' ? b.mineWorkers ?? 1 : 1; }
+export function housingCapacity(s: GameState) { return Math.min(populationCap(s), 10 + s.buildings.filter(b => b.complete).reduce((n, b) => n + (b.kind === 'house' ? 2 : b.kind === 'miningHouse' ? 4 : 0), 0)); }
+function welcomeResidents(s: GameState) {
+  while (s.villagers.length < housingCapacity(s)) {
+    const home = s.buildings.find(b => b.complete && b.kind === 'miningHouse' && s.villagers.filter(v => v.home === b.id).length < 4);
+    addVillager(s, home);
+  }
+}
 export function spendableStock(s: GameState): Stock {
   return Object.fromEntries(RESOURCES.map(r => [r, unreservedStock(s, r)])) as Stock;
 }

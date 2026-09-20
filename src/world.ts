@@ -105,7 +105,7 @@ export function buildingModel(kind: BuildingKind) {
   box(g, WOOD, 0, .35, .59, .34, .65, .06);
   box(g, WOOD, 0, .87, .6, 1.23, .1, .08);
   box(g, '#6e948d', -.35, .68, .61, .22, .25, .035);
-  roof(g, kind === 'woodcutter' || kind === 'forester' ? '#657c51' : kind === 'academy' ? '#566f91' : kind === 'workshop' ? '#657274' : kind === 'warehouse' ? '#797467' : ROOF);
+  roof(g, kind === 'woodcutter' || kind === 'forester' ? '#657c51' : kind === 'academy' ? '#566f91' : kind === 'miningHouse' ? '#526b7b' : kind === 'workshop' ? '#657274' : kind === 'warehouse' ? '#797467' : ROOF);
   if (kind === 'forester') {
     flag(g, '#8fba6d', .95);
     for (const x of [-.48, 0, .48]) { box(g, '#96724b', x, .23, .8, .2, .2, .2); box(g, '#537c51', x, .5, .8, .24, .32, .24); }
@@ -119,6 +119,13 @@ export function buildingModel(kind: BuildingKind) {
   if (kind === 'academy') {
     box(g, '#bda776', 0, 1.72, 0, .18, .15, .18);
     for (let i = 0; i < 4; i++) box(g, ['#647e91', '#a97c64', '#839163', '#c5ad76'][i], -.46 + i * .16, .3, .78, .1, .3, .2);
+  }
+  if (kind === 'miningHouse') {
+    box(g, '#79817f', .4, 1.5, -.3, .25, .75, .25);
+    box(g, '#efc76f', .35, .72, .63, .18, .22, .06);
+    box(g, WOOD, .7, .5, .3, .09, .85, .09);
+    const pick = box(g, '#afbfc2', .7, .84, .3, .52, .09, .1); pick.rotation.z = -.25;
+    crate(g, -.46, .18, .78, .3); flag(g, '#d4b363', .95);
   }
   if (kind === 'house') {
     box(g, '#ada392', .38, 1.47, -.3, .23, .65, .23);
@@ -353,6 +360,7 @@ export class World {
       (model.userData.scaffold as THREE.Group).visible = !b.complete;
       final.children.forEach((part, i) => { part.visible = b.complete || i < Math.max(1, Math.floor(final.children.length * b.progress)); });
     }
+    const labelPositions: { x: number; y: number }[] = [];
     for (const v of s.villagers) {
       let g = this.personMeshes.get(v.id);
       if (!g) {
@@ -385,13 +393,21 @@ export class World {
       g.scale.setScalar(this.depth ? 1.5 : 1);
       const walking = !!(v.task?.path.length || v.mining?.path.length);
       g.position.set(wx(v.x), (this.depth ? .12 : t.kind === 'water' ? .57 : t.height) + (walking ? Math.abs(Math.sin(s.time * 9 + v.id)) * .055 : 0), wz(v.z));
+      if (this.depth && g.visible) {
+        // Separate colleagues sharing the same shaft tile without changing their real routes.
+        const lane = s.villagers.filter(n => n.job === v.job).findIndex(n => n.id === v.id) % 4;
+        g.position.x += lane % 2 ? .23 : -.23; g.position.z += lane < 2 ? -.23 : .23;
+      }
       g.rotation.y = v.facing;
       const label = this.workerLabels.get(v.id)!;
       const projected = new THREE.Vector3(g.position.x, g.position.y + 1.3, g.position.z).project(this.camera);
       label.hidden = !this.depth || !g.visible || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;
       if (!label.hidden) {
         label.textContent = `${v.name} · ${v.mining?.stage === 'work' ? 'gräbt' : v.cargo ? 'trägt ' + v.cargo.amount : 'unterwegs'}`;
-        label.style.left = `${(projected.x + 1) / 2 * this.container.clientWidth}px`; label.style.top = `${(1 - projected.y) / 2 * this.container.clientHeight}px`;
+        const x = (projected.x + 1) / 2 * this.container.clientWidth;
+        let y = (1 - projected.y) / 2 * this.container.clientHeight;
+        while (labelPositions.some(p => Math.abs(p.x - x) < 130 && Math.abs(p.y - y) < 25)) y -= 25;
+        labelPositions.push({ x, y }); label.style.left = `${x}px`; label.style.top = `${y}px`;
       }
       const legs = g.userData.legs as THREE.Group;
       legs.children[0].rotation.x = walking ? Math.sin(s.time * 9 + v.id) * .5 : 0;

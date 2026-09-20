@@ -43,7 +43,7 @@ Ab dem **Dorf** stehen im Reiter **Bergbau** Mineneingang, Schmelzhütte und Sch
 - **Automatisch erkunden** sucht bekannte Erzadern und gräbt weitere erreichbare Fronten in 18 Feldern Umkreis des Schachts. Abschaltbar, kombinierbar mit eigenen Aufträgen.
 - Dunkles Gestein bleibt unbekannt; Höhlen und angrenzende Erzadern werden beim Freilegen sichtbar. Bekannte Höhlen sind begehbar.
 
-Ein Bergmann pro Mine läuft zum Schacht, gräbt unter Tage und bringt höchstens zwei Rohstoffe pro Fahrt ins Minenlager. Normale Träger verteilen sie von dort. Alle Schächte verbinden die drei diskreten Ebenen. Kohle, Kupfer und Eisen treten bereits oben auf; Gold ab −32 m, seltene Diamanten ab −64 m. Vorkommen sind endlich.
+Bis zu vier Bergleute pro Mine laufen zum Schacht, graben an unterschiedlichen erreichbaren Fronten und bringen jeweils höchstens zwei Rohstoffe pro Fahrt ins Minenlager. Die Sollbesetzung lässt sich am Mineneingang und unter Tage einstellen (Standard: einer). Normale Träger verteilen sie von dort. Alle Schächte verbinden die drei diskreten Ebenen. Kohle, Kupfer und Eisen treten bereits oben auf; Gold ab −32 m, seltene Diamanten ab −64 m. Vorkommen sind endlich.
 
 | Betrieb / Aktion | Verbrauch | Ergebnis |
 |---|---|---|
@@ -58,7 +58,7 @@ Metall und Forschungsrohstoff werden im jeweiligen Gebäude eingestellt, sobald 
 
 ## Zivilisation und Bedienung
 
-Vier Stufen: Pionierlager, Dorf, Kleinstadt, Handelsstadt. Bevölkerungsgrenzen 20 / 32 / 48 / 64, jeweils zwei zusätzliche Plätze pro Wohnhaus. Ziele und Kosten stehen im Entwicklungsfenster. Landwirtschaft, Försterei, Werkstatt, Akademie und Rathaus bleiben erhalten; Minen und Metallverarbeitung sind in die Aufstiegsziele integriert.
+Vier Stufen: Pionierlager, Dorf, Kleinstadt, Handelsstadt. Bevölkerungsgrenzen 20 / 32 / 48 / 96, jeweils zwei zusätzliche Plätze pro Wohnhaus oder vier pro Bergmannshaus. Ziele und Kosten stehen im Entwicklungsfenster. Landwirtschaft, Försterei, Werkstatt, Akademie und Rathaus bleiben erhalten; Minen und Metallverarbeitung sind in die Aufstiegsziele integriert.
 
 Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bleiben Träger. Unfertige Bauwerke können abgebrochen werden, geliefertem Material geht nichts verloren. Bäume wachsen langsam bei geringer Walddichte nach; Förstereien beschleunigen dies. Wege und Gebäude bleiben frei. Nahrung wird für Bau und Entwicklung genutzt, nicht laufend durch Hunger verbraucht.
 
@@ -98,6 +98,14 @@ Erkundete Regionen werden aktuell gemeinsam im Speicher gehalten und lokal gespe
 
 Geometrie, Icons und Schriftdateien werden lokal ausgeliefert. Three.js und Vite mit TypeScript; DM Sans und Manrope über Fontsource. Keine externen Assets während des Spiels. Schriftlizenzen liegen in den jeweiligen npm-Paketen.
 
+### Bergmann-Siedlung aufbauen
+
+Ab Stufe Dorf im Reiter **Bergbau → Bergmannshaus** bauen (6 Holz, 10 Bretter, 8 Stein). Bis zu vier neue Bewohner ziehen am Haus ein, sofern die Bevölkerungsgrenze Platz bietet. Sie bevorzugen freie Stellen in erreichbaren Minen innerhalb von zwölf Feldern; ansonsten helfen sie bei anderen Betrieben und Transporten. Bestehende Belegschaften werden nicht verdrängt.
+
+An der Mine **Bergleute einstellen → 4 Bergleute** wählen. Der Zähler zeigt Ist- und Sollbesetzung. Mindestens zwei allgemeine Träger bleiben frei. Mehrere erreichbare Fronten sind nötig, damit mehrere Arbeiter gleichzeitig graben können. Ein Lagerhaus nahe dem Schacht verkürzt den Abtransport. Beim Reduzieren oder Pausieren liefert die Mannschaft laufende Ladungen noch ab.
+
+Bestehende v3-Partien bleiben kompatibel, bestehende Minen behalten zunächst einen Arbeitsplatz. Nahrung und Werkzeuge gewähren in diesem ersten Ausbau noch keinen zusätzlichen Förderbonus. [Umsetzungsplan](docs/MINING-SETTLEMENT-PLAN.md).
+
 ### Bergleute finden
 
-Unter Tage zeigt der Kasten **Bergbau-Betrieb**, wer der Mine zugeteilt ist, wo die Person gerade arbeitet und warum sie gegebenenfalls wartet. **Bergmann zeigen** führt die Kamera zum tatsächlichen Aufenthaltsort. Helm, Spitzhacke und Namensmarkierung kennzeichnen die Figuren. Bei vollem Minenlager holen Träger die Waren ab; die Abholung wechselt fair zwischen Betrieben und Rohstoffen.
+Unter Tage zeigt der Kasten **Bergbau-Betrieb**, wie viele Bergleute der Mine zugeteilt sind, wo die einzelnen Personen gerade arbeiten und warum sie gegebenenfalls wartet. Mit **Bergmann auswählen** lässt sich jedes Mannschaftsmitglied auswählen. **Bergmann zeigen** führt die Kamera zum tatsächlichen Aufenthaltsort. Helm, Spitzhacke und Namensmarkierung kennzeichnen die Figuren. Bei vollem Minenlager holen Träger die Waren ab; die Abholung wechselt fair zwischen Betrieben und Rohstoffen.
