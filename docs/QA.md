@@ -121,3 +121,11 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Dashboard bei 1280×720 visuell geprüft; alle Spalten sichtbar, Tabelle und Dialog scrollbar. Produktion/Verbrauch/Saldo, Betriebsbedarf, Aufstieg und optionale Ausrüstung getrennt. Wissen, Kupfererz, Golderz und weitere Nullzeilen zeigen exakt `-`; zusätzlich als Regression getestet.
 - Voxelmodelle visuell geprüft: gemauerte hohe Schmelzhütte und offene Schmiede mit Amboss; neue Schafzucht, Weberei, Schneiderei und Manufakturen. Schmiede-Inspektor zeigt 10er-Eingänge, 20er-Ausgänge sowie Produkt- und Prioritätsauswahl.
 - `npm run build`, `npm test` und `git diff --check` erfolgreich. Vorhandener Hinweis auf Bundle über 500 kB bleibt bestehen. Dashboard-Screenshot: `economy-dashboard-preview.png`.
+
+## Mehrere Spielstände und Neustart (20.09.2026)
+
+- `npm test`: **66/66 erfolgreich**, darunter sieben neue Prüfungen für getrennte Partien, Übernahme des bisherigen Spielstands, Neustart mit gleichem Seed, zuletzt aktive Welt, Umbenennen/Löschen, fehlerhafte Schreibvorgänge und beschädigte Daten.
+- `npm run build` und `git diff --check`: erfolgreich; bestehender Hinweis zur Bundlegröße bleibt.
+- Browserprüfung in separater Sandbox bei 1280 × 720: vorhandene Manufaktur-Partie (Seed 42, 18 Bewohner) übernommen; neue Partie „QA Bergtal“ mit Seed 98765 angelegt; Neustart als dritte Partie mit identischem Seed und Pionierlager erstellt; umbenannt; zur ursprünglichen Partie gewechselt und Seite neu geöffnet. Die zuletzt gewählte Partie und alle drei Einträge blieben erhalten.
+- Löschdialog abgebrochen (Partie bleibt vorhanden), danach ausschließlich die eigens angelegten QA-Partien bestätigt gelöscht. Originalpartie erhalten. Dialogdarstellung visuell geprüft.
+- Speicherdaten und Metadaten einer Partie werden gemeinsam in einer IndexedDB-Transaktion geschrieben. Die Übernahme lässt den bisherigen einzelnen v3-Spielstand als unveränderte Rückfallkopie liegen. Spielstände bleiben lokal, ohne Cloud-Synchronisation.

@@ -4,7 +4,8 @@ import { mineStatus, DEPTHS, ORE_COLORS, undergroundAt, ensureDepth, markMining 
 import '@fontsource-variable/dm-sans/wght.css';
 import '@fontsource-variable/manrope/wght.css';
 import './style.css';
-import { loadStoredGame, saveStoredGame, readStoredGame } from './persistence.ts';
+import { browserSaveStore, readStoredGame } from './persistence.ts';
+import { SaveLibrary, type SavedWorld } from './save-library.ts';
 import { knownRegions, regionInfo, BIOMES, ERAS, populationCap, civilisationProgress, advanceCivilisation, expeditionStatus, explore, worldBounds, spendableStock, workerTarget } from './sim.ts';
 import { World } from './world.ts';
 import { createGame, step, stock, place, placement, tileAt, buildingAt, buildingStatus, cancelConstruction, serialize, deserialize, DEFINITIONS, NAMES, RESOURCES, type GameState, type Tool, type Point, type BuildingKind, type Building } from './sim.ts';
@@ -59,10 +60,18 @@ const icon = (name: string, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const sandbox = new URLSearchParams(location.search).has('sandbox');
-const loadedGame = await loadStoredGame(sandbox);
-let state: GameState = loadedGame.state;
-let canSave = loadedGame.canSave;
-let startupMessage = loadedGame.notice;
+const saveLibrary = new SaveLibrary(browserSaveStore, sandbox);
+let state: GameState, activeSlot: SavedWorld | null = null;
+let canSave = true, startupMessage = '';
+try {
+  const loaded = await saveLibrary.open(() => readStoredGame(sandbox));
+  state = loaded.state; activeSlot = loaded.slot;
+} catch {
+  state = createGame(); canSave = false;
+  startupMessage = 'Dein Spielstand bleibt geschützt, weil er nicht geladen werden konnte. Über „Spielstände“ kannst du eine andere oder eine neue Partie öffnen.';
+}
+let saveBusy = false;
+let pendingSave: Promise<boolean> = Promise.resolve(true);
 if (import.meta.env.DEV && sandbox) {
   const scenario = new URLSearchParams(location.search).get('scenario');
   if (scenario && ['village', 'world', 'mining', 'economy'].includes(scenario)) {
@@ -90,7 +99,7 @@ el('app').innerHTML = `
     <div class="time-panel"><div class="day">${icon('sun')}<span id="day">Tag 1</span></div><div class="speeds" aria-label="Spielgeschwindigkeit"><button id="pause" class="icon-button" aria-label="Spiel pausieren" title="Pause · Leertaste">${icon('pause')}</button>${[1, 2, 4].map(n => `<button class="speed ${n === 1 ? 'active' : ''}" data-speed="${n}" aria-label="${n}-fache Geschwindigkeit" aria-pressed="${n === 1}">${n}×</button>`).join('')}</div></div>
     <button id="help" class="icon-button top-help" aria-label="Spielhilfe öffnen" title="Spielhilfe">${icon('help')}</button>
   </header>
-  <div class="place-label"><span class="live-dot"></span> ASTRA <span class="divider">/</span> <button id="development" class="era-button">Pionierlager · Stufe I</button> <button id="expeditions" class="era-button">${icon('compass')} Expeditionen</button><button id="world-settings" class="era-button">Seed ${state.seed}</button><button id="underground-toggle" class="era-button">${icon('mine')} Unter Tage</button><button id="stock-list" class="era-button">Wirtschaft</button>${sandbox ? '<b class="sandbox-label">TESTWELT</b>' : ''}</div>
+  <div class="place-label"><span class="live-dot"></span> ASTRA <span class="divider">/</span> <button id="development" class="era-button">Pionierlager · Stufe I</button> <button id="expeditions" class="era-button">${icon('compass')} Expeditionen</button><button id="world-settings" class="era-button">Seed ${state.seed}</button><button id="underground-toggle" class="era-button">${icon('mine')} Unter Tage</button><button id="stock-list" class="era-button">Wirtschaft</button><button id="world-library" class="era-button">Spielstände</button>${sandbox ? '<b class="sandbox-label">TESTWELT</b>' : ''}</div>
   <aside id="mission-panel" class="mission panel"><div class="eyebrow">DEINE GESCHICHTE <span id="chapter-number">01</span></div><h1 id="chapter-title">Ein neuer Anfang.</h1><p id="chapter-description">Aus einem kleinen Lager wird<br>ein Ort, der bleibt.</p><div class="mission-progress"><i id="mission-fill"></i></div><ol id="mission-list"></ol><div id="mission-next"></div></aside>
   <aside id="inspector" class="inspector panel" aria-label="Auswahl und Bauinformationen"></aside>
   <div class="view-controls"><button id="rotate-left" class="icon-button" aria-label="Kamera nach links drehen" title="Drehen · Q">${icon('turn')}</button><span></span><button id="zoom-in" class="icon-button" aria-label="Vergrößern">${icon('plus')}</button><button id="zoom-out" class="icon-button" aria-label="Verkleinern">${icon('minus')}</button><span></span><button id="home" class="icon-button" aria-label="Kamera zum Gründungslager" title="Heimatansicht · H">${icon('compass')}</button></div>
@@ -101,7 +110,7 @@ el('app').innerHTML = `
     <div class="mining-dock-heading"><strong>UNTER TAGE</strong><select id="mine-select" aria-label="Aktiver Mineneingang"></select><select id="depth-select" aria-label="Tiefenebene">${[1, 2, 3].map(d => `<option value="${d}">−${DEPTHS[d]} m</option>`).join('')}</select><button id="surface" class="secondary">Zur Oberfläche ↑</button></div>
     <div class="mining-actions"><button data-mining-mode="inspect" class="active">Ansehen</button><button data-mining-mode="dig">Stollen graben</button><button data-mining-mode="area">Gebiet markieren</button><button data-mining-mode="cancel">Markierung löschen</button><label><input id="auto-mine" type="checkbox"> Automatisch erkunden</label></div><p id="mining-help">Dunkles Gestein ist unbekannt. Helle Erzadern wurden bereits entdeckt.</p>
   </nav>
-  <div class="bottom-right"><div id="event" class="event"></div><div class="utility"><span id="save-status">Lokal gespeichert</span><button id="save" class="icon-button" aria-label="Spiel speichern" title="Spiel speichern">${icon('save')}</button><button id="load" class="icon-button" aria-label="Spielstand laden" title="Spielstand laden">${icon('load')}</button><button id="new-game" class="icon-button" aria-label="Neues Spiel starten" title="Neues Spiel">${icon('reset')}</button></div></div>
+  <div class="bottom-right"><div id="event" class="event"></div><div class="utility"><span id="save-status">Lokal gespeichert</span><button id="save" class="icon-button" aria-label="Spiel speichern" title="Spiel speichern">${icon('save')}</button><button id="load" class="icon-button" aria-label="Spielstände verwalten" title="Spielstände verwalten">${icon('load')}</button><button id="new-game" class="icon-button" aria-label="Neues Spiel starten" title="Neues Spiel">${icon('reset')}</button></div></div>
   <div class="camera-hint">Rechtsziehen <span>Drehen</span> <b>·</b> Scrollen <span>Zoom</span> <b>·</b> WASD <span>Bewegen</span></div>
   <div id="toast" class="toast" role="status"></div>
   <dialog id="dialog"></dialog>
@@ -247,10 +256,24 @@ function updateUI() {
   if (state.events[0]?.message !== lastEvent) { lastEvent = state.events[0]?.message; el('event').textContent = lastEvent; }
   if (state.won && !wonShown) { wonShown = true; showVictory(); }
 }
-async function save(manual = false) {
-  if (!canSave) { el('save-status').textContent = 'Alter Spielstand geschützt'; if (manual) toast(startupMessage); return; }
-  try { await saveStoredGame(state, sandbox); el('save-status').textContent = `Gespeichert · ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`; if (manual) toast('Dein Tal wurde auf diesem Gerät gespeichert.'); }
-  catch { el('save-status').textContent = 'Speichern nicht möglich'; if (manual) toast('Der Browser konnte den Spielstand nicht speichern. Prüfe den verfügbaren lokalen Speicher.'); }
+function save(manual = false, force = false): Promise<boolean> {
+  if (saveBusy && !force) return pendingSave;
+  if (!canSave || !activeSlot) { el('save-status').textContent = 'Alter Spielstand geschützt'; if (manual) toast(startupMessage); return Promise.resolve(false); }
+  const slot = activeSlot, snapshot = serialize(state);
+  pendingSave = pendingSave.then(async () => {
+    try {
+      const updated = await saveLibrary.save(slot, deserialize(snapshot));
+      if (activeSlot?.id === slot.id) activeSlot = updated;
+      el('save-status').textContent = `Gespeichert · ${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+      if (manual) toast(`„${slot.name}“ wurde auf diesem Gerät gespeichert.`);
+      return true;
+    } catch {
+      el('save-status').textContent = 'Speichern nicht möglich';
+      if (manual) toast('Der Browser konnte den Spielstand nicht speichern. Prüfe den verfügbaren lokalen Speicher.');
+      return false;
+    }
+  });
+  return pendingSave;
 }
 function replaceState(next: GameState) {
   viewDepth = 0; activeMine = 0; areaStart = null; world.setDepth(0); el('underground-toggle').innerHTML = icon('mine') + ' Unter Tage'; document.body.classList.remove('underground'); el('mining-dock').hidden = true; el('world-settings').textContent = 'Seed ' + next.seed;
@@ -259,7 +282,7 @@ function replaceState(next: GameState) {
 let dialogSpeed = 1, economyRefreshed = 0;
 function openDialog(html: string, pause = true) {
   const d = el<HTMLDialogElement>('dialog');
-  dialogSpeed = speed; if (pause) setSpeed(0); world.keys.clear(); d.className = ''; d.innerHTML = html; d.showModal();
+  if (!d.open) dialogSpeed = speed; if (pause) setSpeed(0); world.keys.clear(); d.className = ''; d.innerHTML = html; d.showModal();
   d.onclose = () => setSpeed(dialogSpeed);
   d.querySelectorAll<HTMLElement>('[data-close]').forEach(b => b.onclick = () => d.close());
 }
@@ -285,19 +308,69 @@ el('brand-home').onclick = e => { e.preventDefault(); world.resetCamera(); };
 el('rotate-left').onclick = () => world.rotate(Math.PI / 4);
 el('zoom-in').onclick = () => world.zoom(1.2); el('zoom-out').onclick = () => world.zoom(1 / 1.2);
 el('save').onclick = () => save(true);
-el('load').onclick = async () => {
-  let loaded: GameState;
-  try { const raw = await readStoredGame(sandbox); if (!raw) { toast('Noch kein gespeichertes Tal vorhanden.'); return; } loaded = deserialize(raw); }
-  catch { toast('Dieser Spielstand konnte nicht gelesen werden. Dein aktuelles Tal bleibt erhalten.'); return; }
-  openDialog(`<div class="eyebrow">ZURÜCK ZUM LETZTEN SPIELSTAND</div><h2>Dein gespeichertes Tal laden?</h2><p>Änderungen seit dem letzten Speichern werden verworfen.</p><div class="dialog-actions"><button class="secondary" data-close>Weiterspielen</button><button class="primary" id="confirm-load">Spielstand laden</button></div>`);
-  el('confirm-load').onclick = () => { replaceState(loaded); el<HTMLDialogElement>('dialog').close(); toast('Dein gespeichertes Tal ist wieder da.'); };
-};
-el('new-game').onclick = showNewWorld;
-function showNewWorld() {
-  openDialog(`<div class="eyebrow">EIN NEUER ANFANG</div><h2>Noch einmal aufbrechen?</h2><p>Dein aktuelles Tal und der lokale Spielstand werden durch eine neue Siedlung ersetzt.</p><label class="seed-input">Welt-Seed<input id="seed-input" placeholder="Leer lassen für eine zufällige Welt" maxlength="80"><small>Zahl oder Text · gleicher Seed, gleiche Landschaft.</small></label><div class="dialog-actions"><button class="secondary" data-close>Im Tal bleiben</button><button class="primary" id="confirm-new">Neues Tal gründen</button></div>`);
-  el('confirm-new').onclick = () => { canSave = true; const seedText = el<HTMLInputElement>('seed-input').value.trim(); replaceState(seedText ? createGame(seedNumber(seedText)) : createGame()); save(); dialogSpeed = 1; el<HTMLDialogElement>('dialog').close(); toast('Ein neues Tal. Zehn Menschen. Alles ist möglich.'); };
-};
-el('world-settings').onclick = showNewWorld; el('underground-toggle').onclick = () => viewDepth ? leaveUnderground() : enterUnderground();
+el('load').onclick = showSavedWorlds;
+el('world-library').onclick = showSavedWorlds;
+el('new-game').onclick = () => showNewWorld();
+
+async function worldAction(action: () => Promise<void>) {
+  if (saveBusy) return;
+  saveBusy = true;
+  const dialog = el<HTMLDialogElement>('dialog');
+  dialog.oncancel = event => event.preventDefault();
+  dialog.querySelectorAll<HTMLButtonElement>('button').forEach(button => button.disabled = true);
+  try { await pendingSave; await action(); }
+  catch (error) { toast(error instanceof Error ? error.message : 'Der Spielstand konnte nicht gespeichert werden. Dein aktuelles Tal bleibt geöffnet.'); }
+  finally { saveBusy = false; dialog.oncancel = null; dialog.querySelectorAll<HTMLButtonElement>('button').forEach(button => button.disabled = false); }
+}
+async function preserveCurrentWorld() {
+  if (canSave && activeSlot && !await save(false, true)) throw new Error('Dein aktuelles Tal konnte nicht gespeichert werden. Der Wechsel wurde abgebrochen.');
+}
+function showNewWorld(restart = false) {
+  openDialog(`<div class="eyebrow">EIN NEUER ANFANG</div><h2>${restart ? 'Dieses Tal neu beginnen' : 'Ein neues Tal gründen'}</h2><p>${restart ? 'Du beginnst mit derselben Landschaft wieder im Pionierlager. Dein bisheriger Fortschritt bleibt als eigene Partie erhalten.' : 'Jede Welt hat ihren eigenen Spielstand. Dein bisheriges Tal wird gespeichert und bleibt in deiner Liste.'}</p><form id="new-world-form"><label class="seed-input">Name der Partie<input id="world-name" maxlength="60" placeholder="Mein neues Tal" value="${restart ? escape((activeSlot?.name ?? 'Mein Tal') + ' · Neustart') : ''}"></label><label class="seed-input">Welt-Seed<input id="seed-input" placeholder="Leer lassen für eine zufällige Welt" maxlength="80" ${restart ? `value="${state.seed}" readonly` : ''}><small>Zahl oder Text · gleicher Seed, gleiche Landschaft.</small></label><div class="dialog-actions"><button type="button" class="secondary" data-close>Abbrechen</button><button type="submit" class="primary">${restart ? 'Als neue Partie neu starten' : 'Neues Tal gründen'}</button></div></form>`);
+  el<HTMLFormElement>('new-world-form').onsubmit = event => {
+    event.preventDefault();
+    const seedText = el<HTMLInputElement>('seed-input').value.trim(), name = el<HTMLInputElement>('world-name').value;
+    void worldAction(async () => {
+      await preserveCurrentWorld();
+      const next = seedText ? createGame(seedNumber(seedText)) : createGame();
+      const slot = await saveLibrary.create(next, name);
+      activeSlot = slot; canSave = true; replaceState(next); dialogSpeed = 1;
+      el('save-status').textContent = 'Lokal gespeichert';
+      el<HTMLDialogElement>('dialog').close(); toast(`„${slot.name}“ ist bereit. Dein bisheriges Tal bleibt gespeichert.`);
+    });
+  };
+}
+async function showSavedWorlds() {
+  openDialog('<div class="eyebrow">DEINE WELTEN</div><h2>Spielstände</h2><p>Gespeicherte Welten werden geladen …</p><button class="secondary" data-close>Zurück ins Tal</button>');
+  try {
+    const slots = await saveLibrary.list();
+    if (!el<HTMLDialogElement>('dialog').open) return;
+    openDialog(`<div class="eyebrow">DEINE WELTEN · ${slots.length} PARTIEN</div><h2>Spielstände</h2><p>Automatisch alle 20 Sekunden und vor jedem Wechsel gespeichert. Deine Welten bleiben lokal in diesem Browser auf diesem Gerät.</p><div class="world-list">${slots.map(slot => `<article class="saved-world ${slot.id === activeSlot?.id ? 'current' : ''}"><div><h3>${escape(slot.name)} ${slot.id === activeSlot?.id ? '<small>Aktuell</small>' : ''}</h3><p>Tag ${slot.day} · ${escape(ERAS[slot.level - 1]?.name ?? 'Pionierlager')} · ${slot.population} Bewohner · ${slot.regions} Regionen</p><p>Seed ${slot.seed} · Gespeichert ${escape(new Date(slot.updatedAt).toLocaleString('de-DE'))}</p></div><div class="world-actions">${slot.id === activeSlot?.id ? '<button class="secondary" data-close>Weiterspielen</button><button class="secondary" id="restart-world">Neu starten</button>' : `<button class="primary" data-open-world="${escape(slot.id)}">Laden</button>`}<button class="secondary" data-rename-world="${escape(slot.id)}">Umbenennen</button>${slot.id !== activeSlot?.id ? `<button class="secondary danger" data-delete-world="${escape(slot.id)}">Löschen</button>` : ''}</div></article>`).join('') || '<p>Noch keine gespeicherten Welten.</p>'}</div><div class="dialog-actions"><button class="secondary" data-close>Zurück ins Tal</button><button class="primary" id="create-world">Neue Welt</button></div>`);
+    el('dialog').className = 'worlds-dialog';
+    el('create-world').onclick = () => showNewWorld();
+    if (document.getElementById('restart-world')) el('restart-world').onclick = () => showNewWorld(true);
+    el('dialog').querySelectorAll<HTMLButtonElement>('[data-open-world]').forEach(button => button.onclick = () => void worldAction(async () => {
+      const next = await saveLibrary.load(button.dataset.openWorld!);
+      await preserveCurrentWorld(); await saveLibrary.activate(next.slot.id);
+      activeSlot = next.slot; canSave = true; replaceState(next.state);
+      el('save-status').textContent = 'Lokal gespeichert'; el<HTMLDialogElement>('dialog').close(); toast(`Willkommen zurück in „${next.slot.name}“.`);
+    }));
+    el('dialog').querySelectorAll<HTMLButtonElement>('[data-rename-world]').forEach(button => button.onclick = () => {
+      const slot = slots.find(item => item.id === button.dataset.renameWorld)!;
+      openDialog(`<h2>Partie umbenennen</h2><form id="rename-world-form"><label class="seed-input">Name<input id="rename-world-name" value="${escape(slot.name)}" maxlength="60" required></label><div class="dialog-actions"><button type="button" class="secondary" data-close>Abbrechen</button><button class="primary" type="submit">Name speichern</button></div></form>`);
+      el<HTMLFormElement>('rename-world-form').onsubmit = event => {
+        event.preventDefault(); const name = el<HTMLInputElement>('rename-world-name').value;
+        void worldAction(async () => { const renamed = await saveLibrary.rename(slot.id, name); if (activeSlot?.id === slot.id) activeSlot = renamed; await showSavedWorlds(); });
+      };
+    });
+    el('dialog').querySelectorAll<HTMLButtonElement>('[data-delete-world]').forEach(button => button.onclick = () => {
+      const slot = slots.find(item => item.id === button.dataset.deleteWorld)!;
+      openDialog(`<h2>„${escape(slot.name)}“ löschen?</h2><p>Dieser gespeicherte Spielstand wird dauerhaft entfernt. Dein aktuell geöffnetes Tal bleibt erhalten.</p><div class="dialog-actions"><button class="secondary" data-close>Abbrechen</button><button class="primary" id="confirm-delete-world">Endgültig löschen</button></div>`);
+      el('confirm-delete-world').onclick = () => void worldAction(async () => { await saveLibrary.remove(slot.id); await showSavedWorlds(); });
+    });
+  } catch { toast('Die Spielstandliste konnte nicht geladen werden. Dein aktuelles Tal bleibt geöffnet.'); }
+}
+el('world-settings').onclick = () => showNewWorld(); el('underground-toggle').onclick = () => viewDepth ? leaveUnderground() : enterUnderground();
 el('stock-list').onclick = showStocks;
 el('surface').onclick = leaveUnderground;
 el('depth-select').onchange = () => setUndergroundDepth(Number(el<HTMLSelectElement>('depth-select').value));

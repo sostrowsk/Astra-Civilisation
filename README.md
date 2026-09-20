@@ -97,11 +97,13 @@ Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bl
 
 ## Spielstände
 
-Lokale Speicherung alle 20 Sekunden, beim Verlassen und über den Speicherknopf. Die lokale IndexedDB-Datenbank `astra-civilisation` verwendet den Schlüssel **`astra-civilisation:save:v3`**. Vorhandene v3-Teststände aus localStorage werden einmalig eingelesen. Alle entdeckten Landschaften, Schächte, Markierungen, Waren und laufenden Transporte werden gespeichert. Alte Testpartien von Version 1 und 2 sind deaktiviert und werden nicht migriert oder eingelesen.
+Über **Spielstände** verwaltest du mehrere benannte Partien: laden, umbenennen und nach Bestätigung löschen. **Neue Welt** startet eine zufällige Welt oder einen eingegebenen Seed. **Neu starten** beginnt dieselbe Landschaft als zusätzliche Partie im Pionierlager; der bisherige Fortschritt bleibt erhalten. Vor jedem Wechsel wird die aktuelle Partie gespeichert. Beim Öffnen wird die zuletzt gewählte Welt fortgesetzt.
+
+Lokale Speicherung alle 20 Sekunden, beim Verlassen und über den Speicherknopf. Die lokale IndexedDB-Datenbank `astra-civilisation` enthält je Partie eigene Daten und Metadaten; Sandbox-Partien sind getrennt. Ein vorhandener Spielstand unter **`astra-civilisation:save:v3`** in IndexedDB oder localStorage wird einmalig als „Mein bisheriges Tal“ übernommen, ohne die Originaldaten zu entfernen. Alle entdeckten Landschaften, Schächte, Markierungen, Waren und laufenden Transporte werden gespeichert. Alte Testpartien von Version 1 und 2 sind deaktiviert und werden nicht migriert oder eingelesen.
 
 Beim Wirtschaftsupdate werden alte Vorräte einmalig auf die neuen Grenzen gekürzt (vom Nutzer ausdrücklich gewünscht). Alte Kleinstadt- und Handelsstadt-Partien werden zur neuen Kleinstadt, ohne Gebäude oder Bewohner zu verlieren. Laufende alte Lieferungen werden neu eingeplant; bereits getragene Güter bleiben als Rückgaben erhalten. Die Wirtschaftsrevision ist separat vom v3-Weltformat gespeichert.
 
-Die Datenbank **IndexedDB** liegt ausschließlich im Browser; kein Server und kein Cloud-Sync. Browserprofil, Hostname und Port bestimmen den Speicherbereich. Beschädigte aktuelle Spielstände werden vor automatischem Überschreiben geschützt. Ein ausdrücklich bestätigtes neues Spiel ersetzt den aktuellen Spielstand.
+Die Datenbank **IndexedDB** liegt ausschließlich im Browser; kein Server und kein Cloud-Sync. Browserprofil, Hostname und Port bestimmen den Speicherbereich. Beschädigte aktuelle Spielstände werden vor automatischem Überschreiben geschützt. Neue Spiele überschreiben keine andere Partie. Bei einem Speicherfehler wird ein geplanter Wechsel abgebrochen. Das aktive Spiel lässt sich nicht löschen; wechsle dafür zuerst in eine andere Welt.
 
 ## Entwicklung und Prüfung
 
@@ -109,7 +111,7 @@ Die Datenbank **IndexedDB** liegt ausschließlich im Browser; kein Server und ke
 - `src/sim.ts`: Wirtschaft, Wegsuche, Expeditionen, Wachstum und Fortschritt.
 - `src/mining.ts`: Höhlen, Erzadern, Aufträge, Erkundung und Transporte.
 - `src/world.ts`: Three.js, instanziertes Gelände, Tiefenansicht und Voxelmodelle.
-- `src/main.ts`: Oberfläche und Eingaben; `src/persistence.ts`: lokales Speichern.
+- `src/main.ts`: Oberfläche und Eingaben; `src/persistence.ts`: IndexedDB-Zugriff; `src/save-library.ts`: getrennte Spielstände und Übernahme bisheriger Partien.
 - `src/*.test.ts`: Verhaltenstests für Generator, Wirtschaft, Bergbau und Speicherstände.
 
 `npm run fixtures` erzeugt isolierte Testwelten: `?sandbox=1&scenario=village` und `mining` stammen aus einem echten Produktionsdurchlauf. `?sandbox=1&scenario=world` ist eine ausdrücklich mit Vorräten ausgestattete Landschaftsvorschau mit 25 Regionen. `?sandbox=1&scenario=economy` ist eine ausdrücklich finanzierte Vorschau mit tatsächlich errichteten und produzierenden Textil- und Metallbetrieben. Die Fixtures sind nur im Entwicklungsserver verfügbar, werden nicht im Produktionsbuild ausgeliefert und schreiben ausschließlich in einen separaten Testspielstand.

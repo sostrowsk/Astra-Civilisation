@@ -26,7 +26,7 @@ function openDatabase(): Promise<IDBDatabase> {
   });
   return database;
 }
-async function readDatabase(key: string): Promise<string | null> {
+export async function readDatabase(key: string): Promise<string | null> {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('saves', 'readonly'), request = transaction.objectStore('saves').get(key);
@@ -35,6 +35,29 @@ async function readDatabase(key: string): Promise<string | null> {
     transaction.onabort = () => reject(transaction.error);
   });
 }
+export const browserSaveStore = {
+  read: readDatabase,
+  async list(prefix: string): Promise<string[]> {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('saves', 'readonly');
+      const request = tx.objectStore('saves').getAll(IDBKeyRange.bound(prefix, prefix + '\uffff'));
+      request.onsuccess = () => resolve(request.result);
+      tx.onabort = () => reject(tx.error);
+      request.onerror = () => reject(request.error);
+    });
+  },
+  async write(entries: [string, string | null][]): Promise<void> {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('saves', 'readwrite'), store = tx.objectStore('saves');
+      for (const [key, value] of entries) value === null ? store.delete(key) : store.put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onabort = () => reject(tx.error);
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+};
 export async function readStoredGame(sandbox = false): Promise<string | null> {
   const key = SAVE_KEY + (sandbox ? ':sandbox' : ''), raw = await readDatabase(key);
   // Version-3 development saves can be imported cheaply; v1/v2 remain disabled.
