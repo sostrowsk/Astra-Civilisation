@@ -2,7 +2,7 @@
 
 Voxel-Aufbauspiel mit selbstständig arbeitenden Bewohnern und physischem Warentransport. **Version 0.3 – Lebendige Welten & Untertage** ergänzt Seed-Welten, zusammenhängende Landschaften und Bergbau auf drei Tiefenebenen.
 
-[Öffentliches Repository](https://github.com/sostrowsk/Astra-Civilisation) · [Regeln und Umsetzungsplan](docs/WORLD-MINING-PLAN.md)
+[Öffentliches Repository](https://github.com/sostrowsk/Astra-Civilisation) · [Release Notes](RELEASE_NOTES.md) · [Regeln und Umsetzungsplan](docs/WORLD-MINING-PLAN.md)
 
 ## Starten
 
