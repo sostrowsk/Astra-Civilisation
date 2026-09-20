@@ -56,24 +56,25 @@ test('legacy saves are disabled, new storage is isolated and corrupt v3 is prote
   values.set(SAVE_KEY, '{bad'); assert.equal(loadGame(store).canSave, false); assert.equal(values.get(SAVE_KEY), '{bad');
 });
 
-test('progression retains all four eras and population caps, including mining milestones', async () => {
-  const { DEFINITIONS, advanceCivilisation, civilisationProgress, populationCap, RESOURCES } = await import('./sim.ts');
+test('all five eras gate livestock, textile production and metal manufacturing in order', async () => {
+  const { DEFINITIONS, advanceCivilisation, civilisationProgress, populationCap, RESOURCES, ERAS } = await import('./sim.ts');
   const s = createGame(42); fund(s); s.level = 1;
-  // Fixtures isolate gate/cost checks from production; campaign separately verifies real supply.
-  const add = (kind: import('./sim.ts').BuildingKind, x = 6, z = 10) => {
-    const b = { id: s.nextId++, kind, x, z, complete: true, active: true, progress: 1, inventory: goods(), delivered: { ...DEFINITIONS[kind].cost } };
-    s.buildings.push(b); return b;
-  };
+  const add = (kind: import('./sim.ts').BuildingKind) => s.buildings.push({ id: s.nextId++, kind, x: 6, z: 10, complete: true, active: true, progress: 1, inventory: goods(), delivered: { ...DEFINITIONS[kind].cost } });
   for (const kind of ['woodcutter', 'sawmill', 'quarry', 'warehouse', 'outpost'] as const) add(kind);
-  for (let i = 0; i < 27; i++) add('house');
-  const grow = () => { while (s.villagers.length < Math.min(populationCap(s), 64)) { const i = s.villagers.length; s.villagers.push({ ...s.villagers[0], id: i + 1, name: 'Person ' + i, task: null, cargo: null, mining: null }); } };
-  grow(); assert.ok(civilisationProgress(s).ready); assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 32);
-  add('farm'); add('farm'); add('forester'); add('warehouse'); add('mine'); add('smelter');
-  assert.ok(explore(s, regionId(-1, 0)).ok); assert.ok(explore(s, regionId(0, -1)).ok); add('outpost', -1, 12);
-  assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 48);
+  for (let i = 0; i < 59; i++) add('house');
+  for (let i = 10; i < 14; i++) s.villagers.push({ ...s.villagers[0], id: i + 1, name: 'Person ' + i });
+  assert.ok(civilisationProgress(s).ready); assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 32);
+  add('farm'); add('mine'); add('smelter');
+  assert.ok(advanceCivilisation(s).ok); assert.equal(s.level, 3); assert.equal(populationCap(s), 48);
+  assert.equal(DEFINITIONS.sheepfold.tier, 3); assert.equal(DEFINITIONS.weaver.tier, 3); assert.equal(DEFINITIONS.tailor.tier, 3);
+  for (const kind of ['sheepfold', 'weaver', 'tailor', 'warehouse'] as const) add(kind);
+  assert.ok(explore(s, regionId(-1, 0)).ok); assert.ok(explore(s, regionId(0, -1)).ok);
+  assert.equal(advanceCivilisation(s).ok, false, 'clothing is required'); s.buildings[0].inventory.clothes = 40;
+  assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 96);
   for (const kind of ['townhall', 'workshop', 'academy', 'forge'] as const) add(kind);
-  assert.ok(explore(s, regionId(1, 0)).ok); assert.ok(explore(s, regionId(0, 1)).ok); add('outpost', 8, -1);
-  assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 64); assert.equal(new Set(s.villagers.map(v => v.name)).size, 64);
+  s.buildings[0].inventory.copper = 10; s.buildings[0].inventory.iron = 10;
+  assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 128); assert.equal(new Set(s.villagers.map(v => v.name)).size, 128);
+  assert.deepEqual(ERAS.map(e => e.name), ['Pionierlager', 'Dorf', 'Viehzucht', 'Kleinstadt', 'Manufaktur']);
   assert.equal(advanceCivilisation(s).ok, false); for (const r of RESOURCES) assert.ok(stock(s)[r] >= 0);
 });
 

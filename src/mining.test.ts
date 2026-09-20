@@ -53,10 +53,10 @@ test('ore is finite and two mines cannot double-reserve the same block', () => {
   for (let i = 0; i < 200; i++) { step(s, .1); const targets = s.villagers.filter(v => v.mining?.depth === 1).map(v => `${v.mining!.target.x}/${v.mining!.target.z}`); assert.equal(new Set(targets).size, targets.length); }
   assert.ok(t.amount >= 0);
 });
-test('smelter consumes both ore and coal, forge produces three tools per ingot', () => {
-  const s = createGame(42); s.level = 2; s.buildings[0].inventory = { ...goods(), coal: 1, ironOre: 1 };
+test('smelter consumes both ore and coal, forge consumes a simple tool and forges shears', () => {
+  const s = createGame(42); s.level = 2; s.buildings[0].inventory = { ...goods(0, 0, 0, 0, 1), coal: 1, ironOre: 1 };
   const smelter = complete(s, 'smelter', 9, 10), forge = complete(s, 'forge', 10, 10); run(s, 90);
-  assert.equal(stock(s).tools, 3); assert.equal(stock(s).coal, 0); assert.equal(stock(s).ironOre, 0); assert.equal(stock(s).iron, 0);
+  assert.equal(stock(s).shears, 1); assert.equal(stock(s).tools, 0); assert.equal(stock(s).coal, 0); assert.equal(stock(s).ironOre, 0); assert.equal(stock(s).iron, 0);
   assert.ok(smelter.complete && forge.complete);
 });
 test('smelting stops without fuel and resumes when coal becomes available', () => {
@@ -71,13 +71,13 @@ test('bridges build from reachable shore one tile at a time in either orientatio
   for (const x of [10, 11]) { const r = place(s, 'bridge', x, 10); assert.ok(r.ok); const b = s.buildings.find(b => b.id === r.id)!; assert.ok(b.bridgeEntrance); b.complete = true; }
   assert.ok(deserialize(serialize(s)));
 });
-test('real starting economy advances to village and produces mined iron tools without injected stock', () => {
-  const { state: s } = playCampaign(); assert.equal(s.level, 2); assert.ok(stock(s).tools >= 3); console.log(`Real ore-to-tools campaign: ${(s.time / 60).toFixed(1)} simulation minutes.`);
+test('real starting economy advances to village and produces mined iron shears without injected stock', () => {
+  const { state: s } = playCampaign(); assert.equal(s.level, 2); assert.ok(stock(s).shears >= 1); console.log(`Real ore-to-shears campaign: ${(s.time / 60).toFixed(1)} simulation minutes.`);
 });
 
 test('copper and gold research consume metal and produce useful knowledge', () => {
   for (const [metal, knowledge] of [['copper', 6], ['gold', 20]] as const) {
-    const s = createGame(42); s.level = 3; s.buildings[0].inventory = { ...goods(), [metal]: 1 };
+    const s = createGame(42); s.level = 4; s.buildings[0].inventory = { ...goods(), [metal]: 1 };
     const academy = complete(s, 'academy', 9, 10); academy.study = metal; run(s, 60);
     assert.equal(stock(s)[metal], 0); assert.equal(stock(s).knowledge, knowledge);
   }

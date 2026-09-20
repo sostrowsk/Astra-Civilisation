@@ -1,3 +1,4 @@
+import { capacity, roomFor, recordFlow, useEquipment } from './economy.ts';
 import { key, hash, noise, regionFor } from './generator.ts';
 import { NAMES, findPath, tileAt, event, type GameState, type Point, type Building, type Villager, type Resource } from './sim.ts';
 export const DEPTHS = [0, 12, 32, 64] as const;
@@ -97,14 +98,12 @@ export function mineStatus(s: GameState, b: Building) {
   if (!b.active) return 'Mine pausiert. Betrieb fortsetzen, um weiterzugraben.';
   if (!worker) return 'Kein Bergmann zugeteilt. Wohnraum schaffen oder einen anderen Betrieb pausieren.';
   if (worker.task) return `${worker.name} beendet noch einen Transport an der Oberfläche.`;
-  if (Object.values(b.inventory).reduce((a, b) => a + b, 0) >= 40) return 'Minenlager voll (40 Waren). Wartet auf Abholung durch Träger.';
+  if (['stone', ...ORES].some(r => b.inventory[r as Resource] >= capacity(b, r as Resource))) return 'Minenlager voll für mindestens ein Fördergut (40 je Rohstoff). Träger müssen Platz schaffen.';
   if (!b.autoMine && !s.underground.some(t => t.depth === (b.mineDepth ?? 1) && t.order === b.id)) return 'Kein Abbauauftrag. Stollen markieren oder automatische Erkundung einschalten.';
   return `Keine erreichbare Abbaufront auf −${DEPTHS[b.mineDepth ?? 1]} m. Markiere einen verbundenen Stollen ab dem Schacht.`;
 }
 export function assignMiner(s: GameState, v: Villager, b: Building) {
-  // Reserve room for every in-flight load so a team cannot overflow the mine store.
-  const incoming = s.villagers.filter(n => n.mining?.mineId === b.id).length * 2;
-  if (v.depth || v.mining || v.cargo || Object.values(b.inventory).reduce((a, b) => a + b, 0) + incoming + 2 > 40) return;
+  if (v.depth || v.mining || v.cargo) return;
   const depth = b.mineDepth ?? 1;
   ensureDepth(s, depth);
   const assigned = new Set(s.villagers.filter(n => n.mining?.depth === depth).map(n => key(n.mining!.target.x, n.mining!.target.z)));
@@ -112,6 +111,7 @@ export function assignMiner(s: GameState, v: Villager, b: Building) {
     .sort((a, c) => Number(c.order === b.id) - Number(a.order === b.id) || Number(!!c.ore) - Number(!!a.ore) || dist(a, b) - dist(c, b));
   const approach = findPath(s, v, b); if (!approach) return;
   for (const target of candidates) {
+    if (roomFor(s, b, target.ore ?? 'stone') < Math.min(2, target.amount)) continue;
     const routes = neighbors(target).map(p => undergroundPath(s, b, p, depth)).filter((p): p is Point[] => p !== null).sort((a, c) => a.length - c.length);
     if (!routes.length) continue;
     v.mining = { mineId: b.id, depth, target: { x: target.x, z: target.z }, stage: 'approach', path: approach, timer: 0 };
@@ -132,17 +132,18 @@ export function stepMiner(s: GameState, v: Villager, dt: number) {
     if (!routes.length) { v.depth = 0; v.mining = null; return; }
     trip.path = routes[0]; trip.stage = 'outbound'; return;
   }
-  if (trip.stage === 'outbound') { v.facing = Math.atan2(trip.target.x - v.x, trip.target.z - v.z); trip.stage = 'work'; trip.timer = 4 + trip.depth * 2; return; }
+  if (trip.stage === 'outbound') { v.facing = Math.atan2(trip.target.x - v.x, trip.target.z - v.z); trip.stage = 'work'; trip.timer = (4 + trip.depth * 2) / (useEquipment(s, b) ? 1.5 : 1); return; }
   if (trip.stage === 'work') {
     trip.timer -= dt * (1 + (s.level - 1) * .1); if (trip.timer > 0) return;
     const t = undergroundAt(s, trip.target.x, trip.target.z, trip.depth)!;
     if (t.solid && t.amount > 0) {
-      const resource: Resource = t.ore ?? 'stone', amount = Math.min(2, t.amount); t.amount -= amount; v.cargo = { resource, amount };
+      const resource: Resource = t.ore ?? 'stone', amount = Math.min(2, t.amount); t.amount -= amount; v.cargo = { resource, amount }; recordFlow(s, 'produced', resource, amount);
       if (!t.amount) { t.solid = false; t.ore = null; t.order = null; revealCave(s, t, trip.depth); }
     }
     trip.path = undergroundPath(s, v, b, trip.depth)!; trip.stage = 'return'; return;
   }
   if (trip.stage === 'return') {
+    if (v.cargo && roomFor(s, b, v.cargo.resource, v.id) < v.cargo.amount) return;
     if (v.cargo) { b.inventory[v.cargo.resource] += v.cargo.amount; if (v.cargo.resource === 'diamond') event(s, 'Diamanten geborgen! Sie können Expeditionen finanzieren.'); }
     v.x = b.x; v.z = b.z; v.depth = 0; v.cargo = null; v.mining = null;
   }

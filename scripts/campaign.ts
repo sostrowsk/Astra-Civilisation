@@ -12,12 +12,14 @@ export function playCampaign() {
   until(s, () => initial.every(b => b.complete));
   build('outpost', 11, 9); build('warehouse', 7, 11); build('house', 7, 14); build('house', 8, 14);
   until(s, () => civilisationProgress(s).ready); checkpoints.village = serialize(s); assert.ok(advanceCivilisation(s).ok);
+  build('farm', 11, 10);
+  build('workshop', 10, 10);
   const mine = build('mine', 10, 11), smelter = build('smelter', 11, 11), forge = build('forge', 12, 11);
   build('house', 9, 14); build('house', 10, 14);
   until(s, () => mine.complete && smelter.complete && forge.complete);
   checkpoints.mining = serialize(s);
-  until(s, () => stock(s).tools >= 3, 2400);
+  until(s, () => stock(s).shears >= 1, 2400);
   assert.ok(s.underground.some(t => !t.solid));
-  assert.ok(s.buildings[0].inventory.tools + forge.inventory.tools > 0 || s.villagers.some(v => v.cargo?.resource === 'tools'));
+  assert.ok(s.buildings[0].inventory.shears + forge.inventory.shears > 0 || s.villagers.some(v => v.cargo?.resource === 'shears'));
   return { state: s, checkpoints };
 }

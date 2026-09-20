@@ -46,14 +46,48 @@ export function buildingModel(kind: BuildingKind) {
     for (let i = 0; i < 4; i++) box(g, LIGHTWOOD, .52, .25 + i * .28, .6, .33, .07, .1);
     return g;
   }
-  if (kind === 'smelter' || kind === 'forge') {
-    box(g, '#777c78', 0, .6, 0, 1.3, 1.2, 1.2);
-    box(g, '#3d4140', 0, .42, .61, .7, .6, .02);
-    box(g, '#e4974b', 0, .3, .63, .46, .32, .03);
-    box(g, '#62686a', .4, 1.6, -.35, .48, 1.8, .48);
-    if (kind === 'forge') { box(g, '#a2aab0', -.6, .5, .9, .8, .25, .35); box(g, WOOD, -.6, .2, .9, .45, .4, .4); }
-    else for (let i = 0; i < 3; i++) box(g, '#c0a176', -.3 + i * .3, .2, .9, .24, .14, .36);
+  if (kind === 'smelter') {
+    // Tall masonry furnace with chimney, glowing tap and ingot rack.
+    box(g, '#915f49', -.18, .82, -.12, 1.05, 1.64, 1.0);
+    for (let i = 0; i < 5; i++) box(g, '#b18b65', -.18, .25 + i * .3, -.12, 1.1, .06, 1.06);
+    box(g, '#565a56', -.18, 1.85, -.12, .62, .5, .64);
+    box(g, '#343c3a', -.18, 2.12, -.12, .4, .06, .42);
+    box(g, '#342e2b', -.18, .48, .4, .57, .57, .06);
+    box(g, '#f5ac42', -.18, .36, .45, .38, .23, .06);
+    box(g, '#cbbb99', .58, .18, .45, .28, .18, .7);
+    for (let i = 0; i < 3; i++) box(g, '#d29c63', -.38 + i * .27, .18, .85, .23, .15, .3);
     return g;
+  }
+  if (kind === 'forge') {
+    // Low open timber workshop, separate hearth, anvil and hammer.
+    for (const x of [-.6, .6]) for (const z of [-.48, .48]) box(g, WOOD, x, .7, z, .12, 1.4, .12);
+    roof(g, '#506b7b', 1.32);
+    box(g, '#797c75', .4, .38, -.28, .44, .74, .58);
+    box(g, '#e89142', .4, .75, -.28, .3, .08, .4);
+    box(g, WOOD, -.25, .3, .56, .48, .6, .42);
+    box(g, '#626c70', -.25, .68, .56, .8, .2, .34);
+    box(g, '#a9b7b9', -.6, .75, .56, .25, .13, .24);
+    const hammer = box(g, LIGHTWOOD, .14, .73, .72, .06, .55, .07); hammer.rotation.z = -.5;
+    box(g, '#65757a', .27, .99, .72, .3, .13, .14);
+    return g;
+  }
+  if (kind === 'sheepfold') {
+    box(g, '#8caa67', 0, .08, 0, 1.55, .12, 1.5);
+    for (const x of [-.7, .7]) for (const z of [-.65, 0, .65]) box(g, WOOD, x, .35, z, .07, .6, .07);
+    for (const x of [-.7, .7]) box(g, LIGHTWOOD, x, .48, 0, .07, .08, 1.4);
+    box(g, LIGHTWOOD, 0, .48, -.65, 1.4, .08, .07);
+    for (const [x, z] of [[-.3, -.2], [.3, .3]]) {
+      box(g, '#f4ecd9', x, .38, z, .5, .35, .3);
+      box(g, '#756957', x + .29, .4, z, .18, .2, .2);
+      for (const dx of [-.15, .15]) box(g, '#675d50', x + dx, .18, z, .08, .2, .18);
+    }
+    box(g, '#986c45', -.2, .18, .7, .6, .2, .23); return g;
+  }
+  if (kind === 'manufactory') {
+    box(g, '#a76f52', 0, .68, 0, 1.35, 1.2, 1.1); roof(g, '#536e71', 1.28);
+    for (const x of [-.42, .05]) { box(g, '#686f69', x, 1.7, -.4, .24, 1.5, .26); box(g, '#bdd2c5', x, .7, .57, .25, .38, .04); }
+    box(g, '#d49754', .66, .46, .68, .45, .45, .24); box(g, '#515e5e', .66, .46, .82, .2, .2, .04);
+    crate(g, -.5, .12, .8); return g;
   }
   box(g, '#a6a191', 0, .07, 0, 1.48, .14, 1.4);
   if (kind === 'farm') {
@@ -126,6 +160,17 @@ export function buildingModel(kind: BuildingKind) {
     box(g, WOOD, .7, .5, .3, .09, .85, .09);
     const pick = box(g, '#afbfc2', .7, .84, .3, .52, .09, .1); pick.rotation.z = -.25;
     crate(g, -.46, .18, .78, .3); flag(g, '#d4b363', .95);
+  }
+  if (kind === 'weaver') {
+    for (const x of [-.42, .42]) box(g, WOOD, x, .6, .8, .08, .9, .08);
+    for (const y of [.28, .94]) box(g, LIGHTWOOD, 0, y, .8, .92, .09, .1);
+    for (let i = 0; i < 7; i++) box(g, i % 2 ? '#a9beb6' : '#ead9ac', -.3 + i * .1, .6, .82, .035, .55, .04);
+  }
+  if (kind === 'tailor') {
+    box(g, '#986c8a', 0, 1.02, .68, 1.32, .12, .44);
+    box(g, LIGHTWOOD, .63, .48, .87, .07, .7, .07);
+    box(g, '#b98e9a', .63, .7, .87, .37, .4, .15);
+    for (let i = 0; i < 3; i++) box(g, ['#7795a4', '#cfb378', '#b18a93'][i], -.5 + i * .23, .26, .8, .2, .2, .32);
   }
   if (kind === 'house') {
     box(g, '#ada392', .38, 1.47, -.3, .23, .65, .23);

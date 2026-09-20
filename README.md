@@ -48,19 +48,41 @@ Bis zu vier Bergleute pro Mine laufen zum Schacht, graben an unterschiedlichen e
 | Betrieb / Aktion | Verbrauch | Ergebnis |
 |---|---|---|
 | Schmelzhütte | 1 Kohle + 1 Eisen-/Kupfer-/Golderz | 1 entsprechender Barren |
-| Schmiede | 1 Eisenbarren | 3 Werkzeuge |
+| Werkstatt | 1 Stein + 1 Brett | 1 einfaches Werkzeug |
+| Schmiede | 1 Eisenbarren + 1 einfaches Werkzeug | 1 Schere oder Bohrer |
+| Schafzucht | 1 Nahrung | 2 Wolle |
+| Weberei | 1 Wolle | 1 Stoff |
+| Schneiderei | 1 Stoff + 1 Scherennutzung | 1 Kleidung |
+| Manufaktur | 1 Kupfer / 1 Eisen / 1 Draht + 1 Zahnrad | 2 Draht / 2 Zahnräder / 1 Maschinenteil |
 | Akademie | 1 Brett / 1 Kupfer / 1 Gold | 2 / 6 / 20 Wissen |
 | Diamanten-Expedition | 2 Diamanten statt sonstiger Vorräte | Eine benachbarte Region; Stufenvoraussetzungen gelten weiter |
 
-Metall und Forschungsrohstoff werden im jeweiligen Gebäude eingestellt, sobald dessen Arbeiter seinen aktuellen Auftrag beendet hat. **Waren** zeigt alle Rohstoffe einschließlich Erz, Barren und Diamanten.
+Metall und Forschungsrohstoff werden im jeweiligen Gebäude eingestellt, sobald dessen Arbeiter seinen aktuellen Auftrag beendet hat. **Wirtschaft** zeigt alle Rohstoffe, Kapazitäten und Warenflüsse. Schmelzhütte (hoher gemauerter Ofen) und Schmiede (offenes Holzgebäude mit Amboss) haben unterschiedliche Modelle.
 
 ![Erkundeter Stollen mit Erzadern](docs/mining-preview.png)
 
 ## Zivilisation und Bedienung
 
-Vier Stufen: Pionierlager, Dorf, Kleinstadt, Handelsstadt. Bevölkerungsgrenzen 20 / 32 / 48 / 96, jeweils zwei zusätzliche Plätze pro Wohnhaus oder vier pro Bergmannshaus. Ziele und Kosten stehen im Entwicklungsfenster. Landwirtschaft, Försterei, Werkstatt, Akademie und Rathaus bleiben erhalten; Minen und Metallverarbeitung sind in die Aufstiegsziele integriert.
+Fünf Stufen in fester Reihenfolge: **Pionierlager → Dorf → Viehzucht → Kleinstadt → Manufaktur**. Bevölkerungsgrenzen: **20 / 32 / 48 / 96 / 128**. Wohnhäuser bieten zwei Plätze, Bergmannshäuser vier.
 
-Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bleiben Träger. Unfertige Bauwerke können abgebrochen werden, geliefertem Material geht nichts verloren. Bäume wachsen langsam bei geringer Walddichte nach; Förstereien beschleunigen dies. Wege und Gebäude bleiben frei. Nahrung wird für Bau und Entwicklung genutzt, nicht laufend durch Hunger verbraucht.
+Schafzucht, Weberei und Schneiderei werden gemeinsam auf Stufe Viehzucht freigeschaltet. Die Kleinstadt und später die Manufaktur benötigen Kleidung. Die Manufaktur verarbeitet Kupfer und Eisen zu Draht, Zahnrädern und Maschinenteilen. Ziele und Aufstiegskosten stehen im Entwicklungsfenster.
+
+Scheren halten 20 Kleidungsstücke; Bohrer beschleunigen 40 Abbauzyklen um 50 %. Ohne Bohrer bleibt Bergbau möglich. Ein Maschinenteil beschleunigt 20 Produktionszyklen in Werkstatt, Bauernhof, Schafzucht oder Weberei um 25 %. Ausrüstung wird automatisch transportiert; Restnutzungen stehen im Gebäudefenster.
+
+### Lager und Personal
+
+Lagerstandorte fassen **100 je Rohstoff**, Produktionsbetriebe meist **10 je Eingang und 20 je Ausgang**, Minen **40 je Fördergut** und **2 Bohrer**. Gemischte Ein-/Ausgänge der Manufaktur fassen 20, Ausrüstungspuffer 2. Wohnhäuser besitzen kein Warenlager. Reservierungen verhindern Überfüllung durch gleichzeitige Lieferungen. Volle Ausgänge stoppen neue Produktion; Träger suchen Lager mit Platz. Baustellenmaterial liegt separat bereit; Rückgaben warten bei vollen Lagern in einer im Dashboard sichtbaren Rückgabemenge.
+
+Jeder Betrieb hat die **Betriebspriorität Niedrig / Normal / Hoch**. Bei gleicher Priorität wird zunächst eine Stelle pro Betrieb besetzt, danach weitere Minenstellen. Höhere Priorität kann Arbeiter übernehmen, sobald sie ihre aktuelle Lieferung oder Arbeit beendet haben. Zwei Träger bleiben frei. Die Statusanzeige unterscheidet Personalmangel, laufende Lieferungen, volle Ausgänge und fehlende Zutaten.
+
+### Wirtschaftsdashboard
+
+**Wirtschaft** öffnet eine laufend aktualisierte Übersicht: Bestand/Kapazität, Waren unterwegs, freier Platz, Gewinnung/Produktion, Verbrauch und Saldo pro Spielminute. Grundlage sind zehnsekündige Messintervalle über die letzten fünf Spielminuten. Transporte werden nicht als Produktion oder Verbrauch gezählt. Baumaterial zählt bei Fertigstellung, Produktionszutaten beim Arbeitsbeginn; Forschungs- und Expeditionskosten bei Zahlung.
+
+Betriebsbedarf, Kosten des nächsten Aufstiegs und optionale Ausrüstung sind separat aufgeführt. Ohne Produktion **und** Verbrauch steht in der Einordnung **„-“**; „Ausgeglichen“ gilt nur bei ausgeglichenen tatsächlichen Warenflüssen. Ein Betriebsverzeichnis zeigt Wartegründe und Personalzahlen. Messwerte beginnen mit diesem Update; alte Produktion wird nicht geschätzt.
+
+
+Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bleiben Träger. Unfertige Bauwerke können abgebrochen werden, geliefertem Material geht nichts verloren. Bäume wachsen langsam bei geringer Walddichte nach; Förstereien beschleunigen dies. Wege und Gebäude bleiben frei. Nahrung wird für Bau, Entwicklung und Schafzucht genutzt, nicht laufend durch Hunger verbraucht.
 
 | Aktion | Steuerung |
 |---|---|
@@ -77,6 +99,8 @@ Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bl
 
 Lokale Speicherung alle 20 Sekunden, beim Verlassen und über den Speicherknopf. Die lokale IndexedDB-Datenbank `astra-civilisation` verwendet den Schlüssel **`astra-civilisation:save:v3`**. Vorhandene v3-Teststände aus localStorage werden einmalig eingelesen. Alle entdeckten Landschaften, Schächte, Markierungen, Waren und laufenden Transporte werden gespeichert. Alte Testpartien von Version 1 und 2 sind deaktiviert und werden nicht migriert oder eingelesen.
 
+Beim Wirtschaftsupdate werden alte Vorräte einmalig auf die neuen Grenzen gekürzt (vom Nutzer ausdrücklich gewünscht). Alte Kleinstadt- und Handelsstadt-Partien werden zur neuen Kleinstadt, ohne Gebäude oder Bewohner zu verlieren. Laufende alte Lieferungen werden neu eingeplant; bereits getragene Güter bleiben als Rückgaben erhalten. Die Wirtschaftsrevision ist separat vom v3-Weltformat gespeichert.
+
 Die Datenbank **IndexedDB** liegt ausschließlich im Browser; kein Server und kein Cloud-Sync. Browserprofil, Hostname und Port bestimmen den Speicherbereich. Beschädigte aktuelle Spielstände werden vor automatischem Überschreiben geschützt. Ein ausdrücklich bestätigtes neues Spiel ersetzt den aktuellen Spielstand.
 
 ## Entwicklung und Prüfung
@@ -88,9 +112,9 @@ Die Datenbank **IndexedDB** liegt ausschließlich im Browser; kein Server und ke
 - `src/main.ts`: Oberfläche und Eingaben; `src/persistence.ts`: lokales Speichern.
 - `src/*.test.ts`: Verhaltenstests für Generator, Wirtschaft, Bergbau und Speicherstände.
 
-`npm run fixtures` erzeugt isolierte Testwelten: `?sandbox=1&scenario=village` und `mining` stammen aus einem echten Produktionsdurchlauf. `?sandbox=1&scenario=world` ist eine ausdrücklich mit Vorräten ausgestattete Landschaftsvorschau mit 25 Regionen. Die Fixtures sind nur im Entwicklungsserver verfügbar, werden nicht im Produktionsbuild ausgeliefert und schreiben ausschließlich in einen separaten Testspielstand.
+`npm run fixtures` erzeugt isolierte Testwelten: `?sandbox=1&scenario=village` und `mining` stammen aus einem echten Produktionsdurchlauf. `?sandbox=1&scenario=world` ist eine ausdrücklich mit Vorräten ausgestattete Landschaftsvorschau mit 25 Regionen. `?sandbox=1&scenario=economy` ist eine ausdrücklich finanzierte Vorschau mit tatsächlich errichteten und produzierenden Textil- und Metallbetrieben. Die Fixtures sind nur im Entwicklungsserver verfügbar, werden nicht im Produktionsbuild ausgeliefert und schreiben ausschließlich in einen separaten Testspielstand.
 
-Der automatisierte Start-bis-Eisenwerkzeuge-Durchlauf benötigt mit Seed 42 etwa **34,3 Simulationsminuten**. Das ist eine Spielbarkeitsprüfung und keine gemessene menschliche Spielzeit. Weitere Prüfungen: [QA-Protokoll](docs/QA.md). Frühere Spezifikationen für Version 0.1 und 0.2 bleiben als historische Dokumente erhalten.
+Der automatisierte Start-bis-Eisenscheren-Durchlauf benötigt mit Seed 42 etwa **36,4 Simulationsminuten**. Das ist eine Spielbarkeitsprüfung und keine gemessene menschliche Spielzeit. Weitere Prüfungen: [QA-Protokoll](docs/QA.md). Frühere Spezifikationen für Version 0.1 und 0.2 bleiben als historische Dokumente erhalten.
 
 ## Grenzen
 
@@ -104,7 +128,7 @@ Ab Stufe Dorf im Reiter **Bergbau → Bergmannshaus** bauen (6 Holz, 10 Bretter,
 
 An der Mine **Bergleute einstellen → 4 Bergleute** wählen. Der Zähler zeigt Ist- und Sollbesetzung. Mindestens zwei allgemeine Träger bleiben frei. Mehrere erreichbare Fronten sind nötig, damit mehrere Arbeiter gleichzeitig graben können. Ein Lagerhaus nahe dem Schacht verkürzt den Abtransport. Beim Reduzieren oder Pausieren liefert die Mannschaft laufende Ladungen noch ab.
 
-Bestehende v3-Partien bleiben kompatibel, bestehende Minen behalten zunächst einen Arbeitsplatz. Nahrung und Werkzeuge gewähren in diesem ersten Ausbau noch keinen zusätzlichen Förderbonus. [Umsetzungsplan](docs/MINING-SETTLEMENT-PLAN.md).
+Bestehende v3-Partien bleiben kompatibel, bestehende Minen behalten zunächst einen Arbeitsplatz. Bohrer bieten jetzt einen begrenzten Förderbonus; die Werkstatt stellt einfache Werkzeuge her und die Schmiede die Spezialausrüstung. [Umsetzungsplan](docs/MINING-SETTLEMENT-PLAN.md).
 
 ### Bergleute finden
 

@@ -32,7 +32,7 @@ test('a real mining house consumes materials and houses four residents at its en
   assert.deepEqual(deserialize(serialize(s)), s);
 });
 
-test('mining-house residents prefer the nearest mine ahead of older general businesses', () => {
+test('mining-house residents get nearby mine vacancies while every business receives a first worker', () => {
   const s = setup();
   const logger = build(s, 'woodcutter', 7, 10), near = build(s, 'mine', 11, 10), far = build(s, 'mine', 18, 10);
   near.autoMine = false; far.autoMine = false;
@@ -40,7 +40,8 @@ test('mining-house residents prefer the nearest mine ahead of older general busi
   for (const v of s.villagers) { v.job = null; v.task = null; v.mining = null; v.depth = 0; }
   near.mineWorkers = 4; far.mineWorkers = 4;
   const home = build(s, 'miningHouse', 10, 10);
-  assert.equal(s.villagers.filter(v => v.home === home.id && v.job === near.id).length, 4);
+  assert.ok(s.villagers.some(v => v.home === home.id && v.job === near.id));
+  assert.ok(s.villagers.some(v => v.job === far.id));
   assert.ok(s.villagers.some(v => v.job === logger.id));
   assert.ok(s.villagers.filter(v => v.job === null).length >= 2);
 });
@@ -96,13 +97,13 @@ test('legacy v3 mines keep one workplace and corrupt staff or residence fields a
   s.villagers[0].home = b.id; assert.throws(() => deserialize(serialize(s)));
 });
 
-test('residents can move from a general business to a later nearby mine after finishing work', () => {
+test('residents move to a higher-priority nearby mine after finishing work', () => {
   const s = setup(), home = build(s, 'miningHouse', 10, 10), logger = build(s, 'woodcutter', 9, 10);
   const resident = s.villagers.find(v => v.home === home.id)!;
   resident.job = logger.id; resident.task = { kind: 'haul', phase: 'drop', destId: 1, resource: 'wood', amount: 1, path: [], timer: 2 };
   // Other residents are busy carrying, leaving a vacancy until the miner's job ends.
   for (const v of s.villagers.filter(v => !v.home)) { v.job = null; v.task = { kind: 'haul', phase: 'drop', destId: 1, resource: 'wood', amount: 1, path: [], timer: 10 }; }
-  const mine = build(s, 'mine', 11, 10); mine.autoMine = false; mine.mineWorkers = 4;
+  const mine = build(s, 'mine', 11, 10); mine.autoMine = false; mine.mineWorkers = 4; mine.priority = 2;
   step(s, .1); assert.equal(resident.job, logger.id, 'current work finishes first');
   run(s, 4); assert.equal(resident.job, mine.id);
 });
