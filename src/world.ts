@@ -269,15 +269,32 @@ export class World {
     this.selection.visible = false; this.markers.add(this.selection);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true; this.controls.dampingFactor = .12;
+    this.controls.screenSpacePanning = false;
     this.controls.minZoom = .12; this.controls.maxZoom = 3.5;
     this.controls.minPolarAngle = .3; this.controls.maxPolarAngle = Math.PI / 2.5;
-    this.controls.mouseButtons = { LEFT: undefined as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+    this.controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
     this.resetCamera(); this.resize();
     new ResizeObserver(() => this.resize()).observe(container);
-    let down = { x: 0, y: 0 };
-    this.renderer.domElement.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
-    this.renderer.domElement.addEventListener('pointerup', e => { if (e.button === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6) { const p = this.pick(e); if (p) this.onClick(p); } });
-    this.renderer.domElement.addEventListener('pointermove', e => this.onHover(this.pick(e)));
+    let down: { id: number; x: number; y: number; dragged: boolean } | null = null;
+    const cancelGesture = () => { down = null; container.classList.remove('panning'); };
+    this.renderer.domElement.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || !e.isPrimary) { cancelGesture(); return; }
+      down = { id: e.pointerId, x: e.clientX, y: e.clientY, dragged: false };
+    });
+    this.renderer.domElement.addEventListener('pointerup', e => {
+      const clicked = down && down.id === e.pointerId && e.button === 0 && !down.dragged && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6;
+      cancelGesture();
+      if (clicked) { const p = this.pick(e); if (p) this.onClick(p); }
+    });
+    this.renderer.domElement.addEventListener('pointermove', e => {
+      if (down?.id === e.pointerId && Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 6) {
+        down.dragged = true; container.classList.add('panning');
+      }
+      this.onHover(down?.dragged ? null : this.pick(e));
+    });
+    this.renderer.domElement.addEventListener('pointercancel', cancelGesture);
+    this.renderer.domElement.addEventListener('lostpointercapture', cancelGesture);
+    window.addEventListener('blur', cancelGesture);
     this.renderer.domElement.addEventListener('pointerleave', () => this.onHover(null));
     this.renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
     window.addEventListener('keydown', e => { if (!(e.target instanceof HTMLInputElement) && !document.querySelector('dialog[open]')) this.keys.add(e.key.toLowerCase()); });

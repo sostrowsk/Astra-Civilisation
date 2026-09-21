@@ -1,5 +1,11 @@
 # Release Notes
 
+## 21. September 2026 · Kartenfokus mit linker Maustaste verschieben
+
+- Mit gedrückter linker Maustaste lässt sich die Kartenansicht über die Geländeebene verschieben, an der Oberfläche und unter Tage. Rechtsziehen dreht weiterhin die Kamera.
+- Kurze Linksklicks wählen oder bauen weiterhin. Eine Ziehbewegung löst beim Loslassen keinen Bau- oder Auswahlklick aus, auch nach Rückkehr zum Ausgangspunkt. Abgebrochene Mausgesten werden zurückgesetzt.
+- Greifcursor beim Ziehen; Steuerungshinweise und Hilfe aktualisiert. Browserprüfung von Kamerabewegung, Gebäudeauswahl und Ziehen im Baumodus erfolgreich, ohne Konsolenfehler. Produktionsbuild erfolgreich.
+
 ## 21. September 2026 · Außenposten nach der ersten Expedition
 
 - Außenposten sind zu Spielbeginn gesperrt und werden erst mit der ersten erfolgreich gestarteten Expedition freigeschaltet. Bauleiste, Tastenkürzel und Platzierungsprüfung beachten dieselbe Regel.

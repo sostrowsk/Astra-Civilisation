@@ -180,3 +180,10 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Regulärer Spielstart erzeugt die Expeditionskosten selbst und errichtet anschließend einen Außenposten. Die Produktionskampagne erreicht das Dorf vor der ersten Expedition und dem ersten Außenposten und produziert danach weiterhin Scheren.
 - Isolierte Browser-Testwelt: Außenposten-Schaltfläche zunächst deaktiviert mit „Exp.“; erste Expedition ohne Außenposten gestartet; danach aktivierbarer Außenposten-Bauplan und abgehaktes Expeditionsziel. Dorf-Voraussetzungen enthalten fünf Gebäudetypen ohne Außenposten.
 - TypeScript und Vite-Build erfolgreich; bestehender Hinweis zur Bundlegröße bleibt bestehen.
+
+
+## 21. September 2026 · Linke Maustaste zum Verschieben
+
+- Isolierte Browser-Testwelt: links gedrückt gezogen, deutlich verschobene Kamera ohne Auswahlaktion visuell bestätigt; anschließend das Gründungslager durch kurzen Linksklick ausgewählt.
+- Wohnhaus-Baumodus: Ziehbewegung mit Rückkehr zum Ausgangspunkt erzeugt keine Baustelle; Bauplan bleibt geöffnet. Keine Browser-Konsolenfehler.
+- TypeScript und Produktionsbuild erfolgreich.

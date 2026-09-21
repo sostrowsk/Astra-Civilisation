@@ -118,7 +118,7 @@ Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bl
 |---|---|
 | Wählen, bauen, markieren | Linksklick |
 | Kamera drehen | Rechtsziehen, Q / E |
-| Kamera bewegen | WASD, Pfeiltasten, Shift + Rechtsziehen |
+| Kamera bewegen | Linksziehen, WASD, Pfeiltasten, Shift + Rechtsziehen |
 | Zoom | Mausrad, + / − |
 | Heimatansicht | H, Kompass |
 | Bauauswahl | 1–8 im aktuellen Reiter |
