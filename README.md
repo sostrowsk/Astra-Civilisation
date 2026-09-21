@@ -48,6 +48,8 @@ Ebene 1 liefert Stein. Auf Ebene 2 enthalten **5 %**, auf Ebene 3 **10 %** der F
 
 Ab dem **Dorf** stehen im Reiter **Bergbau** Mineneingang, Schmelzhütte und Schmiede bereit.
 
+In der Schmelzhütte wählst du unter **Metall schmelzen** Eisen, Kupfer oder Gold. Rezeptänderungen sind auch während der Arbeit möglich: Der laufende Auftrag wird beendet, dann gilt die neue Auswahl. Vorgemerkte Wechsel werden angezeigt und gespeichert. Dasselbe gilt für die Produktwahl in Schmiede, Akademie und Manufaktur.
+
 - Einen fertigen **Mineneingang** auswählen und **Unter Tage ansehen** anklicken. Alternativ oben **Unter Tage** öffnen.
 - Zwischen **−12, −32 und −64 Metern** wechseln. Die gewählte Ebene bestimmt den nächsten Auftrag dieser Mine. Laufende Aufträge werden auf ihrer bisherigen Ebene beendet.
 - **Stollen graben:** einzelne Felder markieren. **Gebiet markieren:** zwei gegenüberliegende Ecken anklicken, maximal 256 Felder. Eine Koordinateneingabe steht im Inspektor zur Verfügung.

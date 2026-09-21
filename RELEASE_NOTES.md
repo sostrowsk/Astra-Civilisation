@@ -1,5 +1,12 @@
 # Release Notes
 
+## 21. September 2026 · Rezeptauswahl während laufender Arbeit
+
+- Kupfer, Eisen und Gold lassen sich in der Schmelzhütte jederzeit auswählen. Das Dropdown wird während Produktion und Transport nicht mehr gesperrt. Die gleiche Korrektur gilt für Schmiede, Akademie und Manufaktur.
+- Ein Rezeptwechsel während eines laufenden Auftrags wird vorgemerkt und vor dem nächsten Auftrag übernommen. Bereits verbrauchte Zutaten erzeugen weiterhin das ursprünglich bestellte Produkt in der richtigen Menge. Erneute Auswahl ersetzt oder widerruft den vorgemerkten Wechsel.
+- Der Inspektor zeigt das eingestellte beziehungsweise vorgemerkte Rezept. Änderungen werden unmittelbar gespeichert; vorgemerkte Wechsel bleiben beim Laden erhalten.
+- 104 Tests und Produktionsbuild erfolgreich. Regressionstests für laufende Produktion, Zutatenlieferung, Speichern/Laden und alle vier Rezeptbetriebe. Kupferauswahl und sichtbare Übernahme im Browser geprüft.
+
 ## 21. September 2026 · Kartenfokus mit linker Maustaste verschieben
 
 - Mit gedrückter linker Maustaste lässt sich die Kartenansicht über die Geländeebene verschieben, an der Oberfläche und unter Tage. Rechtsziehen dreht weiterhin die Kamera.

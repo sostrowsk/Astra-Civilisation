@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, place, step, stock, goods, serialize, deserialize, cancelConstruction, DEFINITIONS, RESOURCES, type GameState, type Tool, type Building } from './sim.ts';
+import { createGame, setProductionRecipe, productionChoice, place, step, stock, goods, serialize, deserialize, cancelConstruction, DEFINITIONS, RESOURCES, type GameState, type Tool, type Building } from './sim.ts';
 import { capacity, roomFor, economyRows, recordFlow, useEquipment } from './economy.ts';
 import { undergroundAt, revealCave } from './mining.ts';
 function run(s: GameState, seconds: number) { for (let i = 0; i < seconds * 10; i++) step(s, .1); }
@@ -111,4 +111,47 @@ test('legacy in-flight deliveries are rescheduled instead of overbooking a full 
   const raw = JSON.parse(serialize(s)); delete raw.economyVersion;
   const migrated = deserialize(JSON.stringify(raw)); assert.equal(migrated.buildings[0].inventory.stone, 100); assert.equal(migrated.returns!.stone, 20); assert.ok(migrated.villagers.every(v => !v.task && !v.cargo));
   migrated.buildings[0].inventory.stone = 90; step(migrated, .1); assert.equal(migrated.buildings[0].inventory.stone, 100); assert.equal(migrated.returns!.stone, 10);
+});
+
+
+test('switching a busy smelter preserves the iron batch then makes copper and survives save/load', () => {
+  const s = setup(), b = build(s, 'smelter', 10, 10);
+  Object.assign(b.inventory, {ironOre:1, copperOre:1, coal:2});
+  for (let i=0; i<300 && !s.villagers.some(v=>v.job===b.id && v.task?.kind==='craft'); i++) step(s,.1);
+  assert.ok(s.villagers.some(v=>v.job===b.id && v.task?.kind==='craft'));
+  assert.ok(setProductionRecipe(s,b,'copper')); assert.equal(productionChoice(b),'iron'); assert.equal(b.pendingRecipe,'copper');
+  const copy = deserialize(serialize(s)); run(s,90); run(copy,90); assert.deepEqual(copy,s);
+  assert.equal(count(s,'iron'),1); assert.equal(count(s,'copper'),1);
+  assert.equal(count(s,'ironOre'),0); assert.equal(count(s,'copperOre'),0); assert.equal(count(s,'coal'),0);
+  assert.equal(productionChoice(b),'copper'); assert.equal(b.pendingRecipe,undefined);
+});
+
+test('queued changes preserve output and batch size in academy, forge and manufactory', () => {
+  for (const kind of ['academy','forge','manufactory'] as const) {
+    const s=setup(), b=build(s,kind,10,10);
+    const first = kind==='academy' ? 'copper' : kind==='forge' ? 'shears' : 'gears';
+    const next = kind==='academy' ? 'gold' : kind==='forge' ? 'drill' : 'wire';
+    assert.ok(setProductionRecipe(s,b,first));
+    Object.assign(b.inventory, kind==='academy' ? {copper:1} : kind==='forge' ? {iron:1,tools:1} : {iron:1});
+    for(let i=0;i<300 && !s.villagers.some(v=>v.job===b.id && v.task?.kind==='craft');i++) step(s,.1);
+    assert.ok(s.villagers.some(v=>v.job===b.id && v.task?.kind==='craft'));
+    assert.ok(setProductionRecipe(s,b,next)); run(s,80);
+    assert.equal(count(s,kind==='academy' ? 'knowledge' : first),kind==='academy' ? 6 : kind==='forge' ? 1 : 2);
+    if(kind!=='academy') assert.equal(count(s,next),0);
+    assert.equal(productionChoice(b),next); assert.equal(b.pendingRecipe,undefined);
+  }
+});
+
+test('recipe selection during ingredient transport can be replaced, cancelled, saved and validated', () => {
+  const s=setup(), b=build(s,'smelter',10,10); s.buildings[0].inventory.ironOre=1;
+  for(let i=0;i<300 && !s.villagers.some(v=>v.job===b.id && v.task?.kind==='haul');i++) step(s,.1);
+  assert.ok(s.villagers.some(v=>v.job===b.id && v.task?.kind==='haul'));
+  assert.ok(setProductionRecipe(s,b,'copper')); assert.equal(b.pendingRecipe,'copper');
+  assert.ok(setProductionRecipe(s,b,'iron')); assert.equal(b.pendingRecipe,undefined);
+  assert.ok(setProductionRecipe(s,b,'copper')); assert.ok(setProductionRecipe(s,b,'gold')); assert.equal(b.pendingRecipe,'gold');
+  assert.equal(setProductionRecipe(s,b,'diamond'),false); assert.equal(b.pendingRecipe,'gold');
+  const copy=deserialize(serialize(s)); run(s,40); run(copy,40); assert.deepEqual(copy,s);
+  assert.equal(productionChoice(b),'gold'); assert.equal(count(s,'ironOre'),1); assert.equal(count(s,'gold'),0);
+  const bad=deserialize(serialize(s));bad.buildings.find(n=>n.id===b.id)!.pendingRecipe='diamond';
+  assert.throws(()=>deserialize(serialize(bad)));
 });

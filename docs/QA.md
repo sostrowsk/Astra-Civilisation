@@ -187,3 +187,10 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Isolierte Browser-Testwelt: links gedrückt gezogen, deutlich verschobene Kamera ohne Auswahlaktion visuell bestätigt; anschließend das Gründungslager durch kurzen Linksklick ausgewählt.
 - Wohnhaus-Baumodus: Ziehbewegung mit Rückkehr zum Ausgangspunkt erzeugt keine Baustelle; Bauplan bleibt geöffnet. Keine Browser-Konsolenfehler.
 - TypeScript und Produktionsbuild erfolgreich.
+
+
+## 21. September 2026 · Rezeptwechsel während laufender Aufträge
+
+- Ursache: Der Inspektor deaktivierte die Rezeptauswahl bei jeder Aufgabe des zugeteilten Arbeiters und verwarf Änderungen während solcher Aufgaben.
+- 104 Tests erfolgreich. Neue Verhaltenstests bestätigen Eisenproduktion vor anschließendem Kupferrezept, korrekten Zutatenverbrauch, unveränderte Chargengrößen in Akademie/Schmiede/Manufaktur, Wechsel während Zutatenlieferungen, Ersetzen/Widerrufen vorgemerkter Rezepte und identische Fortsetzung nach Speichern/Laden. Ungültige gespeicherte Rezepte werden abgewiesen.
+- Isolierte Browserwelt: Schmelzhütte ausgewählt, Dropdown auf Kupfer gesetzt, Bestätigung „Eingestellt: Kupfer“ sichtbar. TypeScript und Produktionsbuild erfolgreich.

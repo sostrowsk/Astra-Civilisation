@@ -39,7 +39,7 @@ export const DEFINITIONS: Record<BuildingKind, { name: string; cost: Stock; desc
 };
 export type Biome = 'meadow' | 'forest' | 'highland' | 'desert';
 export interface Tile extends Point { priorityFelling?: boolean; priorityQuarrying?: boolean; excavation?: { depth: number; remaining: number; ordered: boolean }; biome: Biome; region: number; discovered: boolean; sapling: number;  height: number; kind: 'grass' | 'water'; waterway: 'river' | 'lake' | null; node: 'tree' | 'rock' | null; amount: number; road: boolean; variant: number }
-export interface Building extends Point { priority?: number; forgeProduct?: 'shears' | 'drill'; manufacture?: 'wire' | 'gears' | 'machineParts'; equipmentUses?: number; id: number; kind: BuildingKind; complete: boolean; delivered: Stock; inventory: Stock; progress: number; active: boolean; bridgeEntrance?: Point; metal?: 'iron' | 'copper' | 'gold'; study?: 'planks' | 'copper' | 'gold'; mineWorkers?: number; mineDepth?: number; autoMine?: boolean; lastExportAt?: number; exportCursor?: number }
+export interface Building extends Point { pendingRecipe?: Resource; priority?: number; forgeProduct?: 'shears' | 'drill'; manufacture?: 'wire' | 'gears' | 'machineParts'; equipmentUses?: number; id: number; kind: BuildingKind; complete: boolean; delivered: Stock; inventory: Stock; progress: number; active: boolean; bridgeEntrance?: Point; metal?: 'iron' | 'copper' | 'gold'; study?: 'planks' | 'copper' | 'gold'; mineWorkers?: number; mineDepth?: number; autoMine?: boolean; lastExportAt?: number; exportCursor?: number }
 export interface Task { vehicle?: 'cart' | 'coach'; kind: 'return' | 'haul' | 'gather' | 'saw' | 'craft' | 'excavate'; layer?: number; phase: 'pickup' | 'work' | 'drop'; sourceId?: number; destId: number; resource: Resource; amount: number; node?: Point; path: Point[]; timer: number }
 export interface Villager extends Point { role?: 'merchant'; settlement?: number; origin?: Point; id: number; name: string; home?: number; job: number | null; task: Task | null; cargo: { resource: Resource; amount: number } | null; facing: number; depth: number; mining: MiningTrip | null }
 export interface GameState { version: 3; logisticsVersion?: 1; economyVersion?: 1 | 2; economy?: EconomyHistory; returns?: Stock; underground: UndergroundTile[]; level: number; regions: number[]; ecologyTick: number; woodGrown: number; seed: number; time: number; nextId: number; tiles: Tile[]; buildings: Building[]; villagers: Villager[]; milestones: BuildingKind[]; events: { time: number; message: string }[]; won: boolean; revision: number }
@@ -456,6 +456,7 @@ export function step(s: GameState, dt: number) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   // The application calls this in fixed 0.1-second increments.
   s.time += dt; pruneHistory(s); syncResidents(s);
+  for (const b of s.buildings) applyPendingRecipe(s, b);
   distributeReturns(s);
   for (const b of s.buildings) if (!b.complete && RESOURCES.every(r => b.delivered[r] >= DEFINITIONS[b.kind].cost[r])) {
     b.progress = Math.min(1, b.progress + dt / (b.kind === 'bridge' ? 12 : 8));
@@ -568,6 +569,7 @@ export function deserialize(raw: string): GameState {
     if (b.lastExportAt !== undefined && (!finite(b.lastExportAt) || b.lastExportAt < 0)) fail();
     if (b.exportCursor !== undefined && (!integer(b.exportCursor) || b.exportCursor >= RESOURCES.length)) fail();
     if (b.mineWorkers !== undefined && (b.kind !== 'mine' || !integer(b.mineWorkers) || b.mineWorkers < 1 || b.mineWorkers > 4)) fail();
+    if (b.pendingRecipe !== undefined && (!b.complete || !productionChoices(b).includes(b.pendingRecipe))) fail();
     if (b.priority !== undefined && ![0, 1, 2].includes(b.priority)) fail();
     if (b.manufacture !== undefined && !['wire', 'gears', 'machineParts'].includes(b.manufacture)) fail();
     if (b.forgeProduct !== undefined && !['shears', 'drill'].includes(b.forgeProduct)) fail();
@@ -775,6 +777,26 @@ export function advanceCivilisation(s: GameState) {
   spend(s, progress.cost); s.level++; syncResidents(s); welcomeResidents(s); s.revision++;
   event(s, `Neue Zivilisationsstufe: ${ERAS[s.level - 1].name}! ${ERAS[s.level - 1].unlocks}.`);
   return { ok: true, reason: `Willkommen in der Stufe ${ERAS[s.level - 1].name}!` };
+}
+export function productionChoices(b: Building): Resource[] {
+  return b.kind === 'smelter' ? ['iron', 'copper', 'gold'] : b.kind === 'forge' ? ['shears', 'drill'] : b.kind === 'manufactory' ? ['wire', 'gears', 'machineParts'] : b.kind === 'academy' ? ['planks', 'copper', 'gold'] : [];
+}
+export function productionChoice(b: Building): Resource {
+  return b.kind === 'smelter' ? b.metal ?? 'iron' : b.kind === 'forge' ? b.forgeProduct ?? 'shears' : b.kind === 'manufactory' ? b.manufacture ?? 'wire' : b.study ?? 'planks';
+}
+function applyPendingRecipe(s: GameState, b: Building) {
+  if (!b.pendingRecipe || s.villagers.some(v => v.task && (v.job === b.id || (v.task.destId === b.id && ['craft', 'saw'].includes(v.task.kind))))) return;
+  if (b.kind === 'smelter') b.metal = b.pendingRecipe as 'iron' | 'copper' | 'gold';
+  else if (b.kind === 'forge') b.forgeProduct = b.pendingRecipe as 'shears' | 'drill';
+  else if (b.kind === 'manufactory') b.manufacture = b.pendingRecipe as 'wire' | 'gears' | 'machineParts';
+  else if (b.kind === 'academy') b.study = b.pendingRecipe as 'planks' | 'copper' | 'gold';
+  delete b.pendingRecipe;
+}
+export function setProductionRecipe(s: GameState, b: Building, choice: Resource): boolean {
+  if (!s.buildings.includes(b) || !b.complete || !productionChoices(b).includes(choice)) return false;
+  if (choice === productionChoice(b)) delete b.pendingRecipe;
+  else { b.pendingRecipe = choice; applyPendingRecipe(s, b); }
+  return true;
 }
 export function recipeFor(s: GameState, b: Building): { input: Resource | null; output: Resource; count: number; seconds: number; fuel?: Resource } | null {
   if (b.kind === 'smelter') { const metal = b.metal ?? 'iron'; return { input: (metal + 'Ore') as Resource, output: metal, count: 1, seconds: 10, fuel: 'coal' }; }
