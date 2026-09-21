@@ -1,5 +1,10 @@
 # Release Notes
 
+## 21. September 2026 · Expeditionen nach Entfernung
+
+- Bekannte und noch unentdeckte Regionen erscheinen gemeinsam nach Abstand zum Heimattal: zuerst das Heimattal, dann alle Regionen im Ring ±1, anschließend ±2 und so weiter. Diagonale Nachbarn gehören zum selben Ring.
+- Bei gleichem Abstand bleibt die Reihenfolge nach Koordinaten stabil, unabhängig von der bisherigen Erkundungsreihenfolge.
+
 ## 21. September 2026 · Baumwachstum und Tagebau
 
 - Fünf sichtbare Jungbaumstufen; erst ausgewachsene Bäume blockieren das Bauen. Reifezeit 8–15 Spielminuten, mit Försterei halbiert.

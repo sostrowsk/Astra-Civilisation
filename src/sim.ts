@@ -496,7 +496,9 @@ export function regionInfo(s: GameState, id: number) {
 export function knownRegions(s: GameState) {
   const ids = new Set(s.regions);
   for (const id of s.regions) { const { cx, cz } = regionCoords(id); for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) ids.add(regionId(cx + dx, cz + dz)); }
-  return [...ids].map(id => regionInfo(s, id));
+  // Concentric coordinate rings: all ±1 regions (including diagonals) before ±2.
+  const ring = (r: { x: number; z: number }) => Math.max(Math.abs(r.x) / CHUNK_W, Math.abs(r.z) / CHUNK_H);
+  return [...ids].map(id => regionInfo(s, id)).sort((a, b) => ring(a) - ring(b) || a.z - b.z || a.x - b.x);
 }
 export const ERAS = [
   { name: 'Pionierlager', cap: 20, unlocks: 'Holz, Stein und die erste Brücke' },
