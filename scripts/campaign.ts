@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { createGame, place, step, stock, serialize, civilisationProgress, advanceCivilisation, type GameState, type Tool } from '../src/sim.ts';
+import { createGame, explore, expeditionStatus, place, step, stock, serialize, civilisationProgress, advanceCivilisation, type GameState, type Tool } from '../src/sim.ts';
+import { regionId } from '../src/generator.ts';
 export function until(s: GameState, predicate: () => boolean, seconds = 1200) {
   for (let i = 0; i < seconds * 10; i++) { if (predicate()) return; step(s, .1); }
   assert.ok(predicate(), `Timeout at ${s.time.toFixed(1)}: ${JSON.stringify(stock(s))}; ${JSON.stringify(civilisationProgress(s))}`);
@@ -10,8 +11,11 @@ export function playCampaign() {
   const build = (kind: Tool, x: number, z: number) => { const r = place(s, kind, x, z); assert.ok(r.ok, r.reason); return s.buildings.find(b => b.id === r.id)!; };
   const initial = [build('woodcutter', 7, 10), build('sawmill', 9, 10), build('quarry', 9, 8)];
   until(s, () => initial.every(b => b.complete));
-  build('outpost', 11, 9); build('warehouse', 7, 11); build('house', 7, 14); build('house', 8, 14);
+  build('warehouse', 7, 11); build('house', 7, 14); build('house', 8, 14);
   until(s, () => civilisationProgress(s).ready); checkpoints.village = serialize(s); assert.ok(advanceCivilisation(s).ok);
+  until(s, () => expeditionStatus(s, regionId(-1,0)).ok);
+  assert.ok(explore(s, regionId(-1,0)).ok);
+  build('outpost', 11, 9);
   build('farm', 11, 10);
   build('workshop', 10, 10);
   const mine = build('mine', 10, 11), smelter = build('smelter', 11, 11), forge = build('forge', 12, 11);

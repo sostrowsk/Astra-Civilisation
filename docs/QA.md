@@ -172,3 +172,11 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Reproduzierbare Browser-Testwelt: `node --experimental-strip-types scripts/create-trade-fixture.ts`, danach `/?sandbox&scenario=trade`. Die finanzierte Szene nutzt echte Transportaufträge statt eingefrorener Fahrzeugposen.
 - Browserprüfung bei 1280×720: ein Pferdekarren und eine gedeckte Kutsche sichtbar; Lagerhaus 10/12 zeigt vier Händler, davon zwei zu Fuß, und je ein belegtes Fahrzeug. Wirtschaftsübersicht trennt zehn örtliche Träger von vier Händlern. Die reguläre Partie wurde nicht verwendet.
 - Produktionsbuild und `git diff --check` erfolgreich; bestehender Hinweis zur Bundlegröße unverändert.
+
+
+## 21. September 2026 · Freischaltung der Außenposten
+
+- 101 Tests erfolgreich. Neue Prüfung: gesperrter Außenposten zu Beginn, fehlgeschlagene Expedition ohne Freischaltung, erfolgreiche Expedition bereits im Pionierlager ohne Außenposten sowie dauerhafte Freischaltung nach Speichern/Laden.
+- Regulärer Spielstart erzeugt die Expeditionskosten selbst und errichtet anschließend einen Außenposten. Die Produktionskampagne erreicht das Dorf vor der ersten Expedition und dem ersten Außenposten und produziert danach weiterhin Scheren.
+- Isolierte Browser-Testwelt: Außenposten-Schaltfläche zunächst deaktiviert mit „Exp.“; erste Expedition ohne Außenposten gestartet; danach aktivierbarer Außenposten-Bauplan und abgehaktes Expeditionsziel. Dorf-Voraussetzungen enthalten fünf Gebäudetypen ohne Außenposten.
+- TypeScript und Vite-Build erfolgreich; bestehender Hinweis zur Bundlegröße bleibt bestehen.

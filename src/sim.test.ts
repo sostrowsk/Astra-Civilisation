@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, place, placement, step, cancelConstruction, stock, serialize, deserialize, RESOURCES, DEFINITIONS, goods, type GameState, type BuildingKind } from './sim.ts';
+import { createGame, explore, expeditionStatus, place, placement, step, cancelConstruction, stock, serialize, deserialize, RESOURCES, DEFINITIONS, goods, type GameState, type BuildingKind } from './sim.ts';
+import { regionId } from './generator.ts';
 function run(s: GameState, seconds: number) { for (let i = 0; i < seconds * 10; i++) step(s, .1); }
 function until(s: GameState, done: () => boolean, seconds = 500) { for (let i = 0; i < seconds * 10; i++) { if (done()) return; step(s, .1); } assert.ok(done(), `Timed out at ${s.time}`); }
 function build(s: GameState, kind: Exclude<BuildingKind, 'camp'>, x: number, z: number) { const result = place(s, kind, x, z); assert.ok(result.ok, result.reason); return s.buildings.find(b => b.id === result.id)!; }
@@ -40,12 +41,17 @@ test('validation rejects corrupt resources, ids, positions, old versions and job
   assert.throws(() => deserialize('{}')); assert.throws(() => deserialize('not json'));
   assert.throws(() => deserialize(serialize(createGame(42)).replace('"version":3', '"version":2')));
 });
-test('opening economy and outpost complete with no cheats', () => {
+test('opening economy funds its first expedition before the outpost without cheats', () => {
   const s = createGame(42), before = materials(s);
   const logger = build(s, 'woodcutter', 7, 10), sawmill = build(s, 'sawmill', 9, 10), quarry = build(s, 'quarry', 9, 8);
   until(s, () => logger.complete && sawmill.complete && quarry.complete);
+  assert.equal(place(s, 'outpost', 11, 9).ok, false);
+  until(s, () => expeditionStatus(s, regionId(-1,0)).ok);
+  assert.deepEqual(materials(s), before);
+  assert.ok(explore(s, regionId(-1,0)).ok);
+  const expanded = materials(s);
   const post = build(s, 'outpost', 11, 9); until(s, () => post.complete, 900);
-  assert.ok(s.won); assert.deepEqual(materials(s), before); assert.equal(deserialize(serialize(s)).won, true);
+  assert.ok(s.won); assert.deepEqual(materials(s), expanded); assert.equal(deserialize(serialize(s)).won, true);
 });
 test('paused producer finishes and returns worker to transport', () => {
   const s = createGame(42), b = build(s, 'woodcutter', 7, 10); until(s, () => s.villagers.some(v => v.job === b.id && v.task)); b.active = false; run(s, 60); assert.ok(s.villagers.every(v => v.job !== b.id));

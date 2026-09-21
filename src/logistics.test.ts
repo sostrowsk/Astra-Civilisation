@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, place, step, goods, serialize, deserialize, stock, tileAt, findPath, syncResidents, demolishBuilding, DEFINITIONS, type GameState, type Tool } from './sim.ts';
+import { createGame, explore, place, step, goods, serialize, deserialize, stock, tileAt, findPath, syncResidents, demolishBuilding, DEFINITIONS, type GameState, type Tool } from './sim.ts';
 import { isMerchant, merchantCapacity, inLocalArea, workerPath } from './logistics.ts';
+import { regionId } from './generator.ts';
 import { capacity } from './economy.ts';
 function setup(level = 3) {
   const s = createGame(42); s.level = level;
+  s.buildings[0].inventory = goods(80,80,80); assert.ok(explore(s, regionId(-1,0)).ok);
   for (const t of s.tiles) Object.assign(t, {kind:'grass', node:null, amount:0, sapling:0, waterway:null});
   s.buildings[0].inventory = goods(80,80,80); return s;
 }

@@ -35,7 +35,7 @@ export const DEFINITIONS: Record<BuildingKind, { name: string; cost: Stock; desc
   weaver: { name: 'Weberei', cost: goods(8, 18, 10, 4), description: 'Webt aus 1 Wolle einen Stoffballen für die Schneiderei.', producer: true, tier: 3 },
   tailor: { name: 'Schneiderei', cost: goods(8, 20, 12, 8, 4), description: '1 Stoff → 1 Kleidung. Eine Schere hält 20 Arbeitszyklen. Kleidung ermöglicht die Manufaktur.', producer: true, tier: 3 },
   manufactory: { name: 'Manufaktur', cost: { ...goods(12, 30, 30, 20, 8), copper: 4, iron: 4 }, description: 'Kupfer → 2 Draht, Eisen → 2 Zahnräder; 1 Draht + 1 Zahnrad → 1 Maschinenteil. Maschinenteile beschleunigen 20 Arbeitszyklen geeigneter Betriebe um 25 %.', producer: true, tier: 5 },
-  outpost: { name: 'Außenposten', cost: goods(6, 12, 10), description: 'Gründe einen neuen Ort mindestens 5 Felder vom Lager entfernt. Erschließt in neuen Regionen einen Baubereich von 9 Feldern.' },
+  outpost: { name: 'Außenposten', cost: goods(6, 12, 10), description: 'Nach der ersten Expedition verfügbar. Gründe einen neuen Ort mindestens 5 Felder vom Lager entfernt. Erschließt in neuen Regionen einen Baubereich von 9 Feldern.' },
 };
 export type Biome = 'meadow' | 'forest' | 'highland' | 'desert';
 export interface Tile extends Point { priorityFelling?: boolean; priorityQuarrying?: boolean; excavation?: { depth: number; remaining: number; ordered: boolean }; biome: Biome; region: number; discovered: boolean; sapling: number;  height: number; kind: 'grass' | 'water'; waterway: 'river' | 'lake' | null; node: 'tree' | 'rock' | null; amount: number; road: boolean; variant: number }
@@ -104,10 +104,12 @@ export function event(s: GameState, message: string) {
 export function stock(s: GameState): Stock {
   return s.buildings.reduce((a, b) => { for (const r of RESOURCES) a[r] += b.inventory[r]; return a; }, emptyStock());
 }
+export const outpostsUnlocked = (s: GameState) => s.regions.length > 1;
 export function placement(s: GameState, tool: Tool, x: number, z: number): { ok: boolean; reason: string; x: number; z: number } {
   const deny = (reason: string) => ({ ok: false, reason, x, z });
   if (!inside(x, z)) return deny('Wähle ein Feld innerhalb der Insel.');
   if (!tileAt(s, x, z)?.discovered) return deny('Noch unerforscht. Öffne die Expeditionskarte.');
+  if (tool === 'outpost' && !outpostsUnlocked(s)) return deny('Starte zuerst eine Expedition. Danach werden Außenposten freigeschaltet.');
   if (tool === 'camp' && s.buildings.some(b => b.kind === 'camp')) return deny('Es gibt bereits ein Gründungslager. Reiße es zuerst ab, um es zu versetzen.');
   if (tool !== 'road' && (DEFINITIONS[tool].tier ?? 1) > s.level) return deny(`Wird ab Stufe ${DEFINITIONS[tool].tier} freigeschaltet.`);
   if (tool === 'bridge') {
@@ -734,7 +736,6 @@ export function expeditionStatus(s: GameState, id: number, diamonds = false): { 
   const r = knownRegions(s).find(r => r.id === id);
   if (!r) return { ok: false, reason: 'Unbekannte Region.' };
   if (s.regions.includes(id)) return { ok: false, reason: 'Bereits erkundet.' };
-  if (!s.won) return { ok: false, reason: 'Gründe zuerst einen Außenposten.' };
   if (s.level < r.tier) return { ok: false, reason: `Benötigt die Stufe ${ERAS[r.tier - 1].name}.` };
   if (!knownRegions(s).some(n => s.regions.includes(n.id) && (Math.abs(r.x - n.x) === ORIGINAL_WIDTH && r.z === n.z || Math.abs(r.z - n.z) === ORIGINAL_HEIGHT && r.x === n.x))) return { ok: false, reason: 'Erkunde zuerst eine benachbarte Region.' };
   if (!canSpend(s, diamonds ? { ...goods(), diamond: 2 } : r.cost)) return { ok: false, reason: 'Noch nicht genug unreservierte Expeditionsvorräte.' };
@@ -753,8 +754,8 @@ export function civilisationProgress(s: GameState): { requirements: Requirement[
   const requirement = (label: string, current: number, target: number): Requirement => ({ label, current, target, met: current >= target });
   let requirements: Requirement[] = [], cost = goods();
   if (s.level === 1) {
-    const basics: BuildingKind[] = ['woodcutter', 'sawmill', 'quarry', 'house', 'warehouse', 'outpost'];
-    requirements = [requirement('Alle 6 Pionier-Bauwerke', basics.filter(k => counts(k)).length, 6), requirement('Bewohner', s.villagers.length, 14)];
+    const basics: BuildingKind[] = ['woodcutter', 'sawmill', 'quarry', 'house', 'warehouse'];
+    requirements = [requirement('Alle 5 Pionier-Bauwerke', basics.filter(k => counts(k)).length, 5), requirement('Bewohner', s.villagers.length, 14)];
     cost = goods(0, 20, 10);
   } else if (s.level === 2) {
     requirements = [requirement('Bauernhof', counts('farm'), 1), requirement('Mineneingang', counts('mine'), 1), requirement('Schmelzhütte', counts('smelter'), 1), requirement('Bewohner', s.villagers.length, 18)];

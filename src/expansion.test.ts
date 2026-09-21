@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, tileAt, explore, expeditionStatus, goods, stock, knownRegions, worldBounds, serialize, deserialize, place, step, regrowForest, findPath, type GameState } from './sim.ts';
+import { createGame, outpostsUnlocked, tileAt, explore, expeditionStatus, goods, stock, knownRegions, worldBounds, serialize, deserialize, place, step, regrowForest, findPath, type GameState } from './sim.ts';
 import { generateChunk, generateTile, terrainSample, regionId, regionCoords, seedNumber } from './generator.ts';
 import { loadGame, saveGame, SAVE_KEY } from './persistence.ts';
 const fund = (s: GameState) => { s.won = true; s.level = 4; s.buildings[0].inventory = goods(1000, 1000, 1000, 1000, 1000, 1000); };
@@ -60,9 +60,10 @@ test('all five eras gate livestock, textile production and metal manufacturing i
   const { DEFINITIONS, advanceCivilisation, civilisationProgress, populationCap, RESOURCES, ERAS } = await import('./sim.ts');
   const s = createGame(42); fund(s); s.level = 1;
   const add = (kind: import('./sim.ts').BuildingKind) => s.buildings.push({ id: s.nextId++, kind, x: 6, z: 10, complete: true, active: true, progress: 1, inventory: goods(), delivered: { ...DEFINITIONS[kind].cost } });
-  for (const kind of ['woodcutter', 'sawmill', 'quarry', 'warehouse', 'outpost'] as const) add(kind);
+  for (const kind of ['woodcutter', 'sawmill', 'quarry', 'warehouse'] as const) add(kind);
   for (let i = 0; i < 59; i++) add('house');
   for (let i = 10; i < 14; i++) s.villagers.push({ ...s.villagers[0], id: i + 1, name: 'Person ' + i });
+  assert.equal(outpostsUnlocked(s), false); assert.ok(!s.buildings.some(b => b.kind === 'outpost'));
   assert.ok(civilisationProgress(s).ready); assert.ok(advanceCivilisation(s).ok); assert.equal(s.villagers.length, 36);
   add('farm'); add('mine'); add('smelter');
   assert.ok(advanceCivilisation(s).ok); assert.equal(s.level, 3); assert.equal(populationCap(s), 52);
@@ -86,4 +87,17 @@ test('a mature sapling cannot close the only corridor to another building', () =
   s.buildings.push({ ...s.buildings[0], id: s.nextId++, x: 8, z: 18, kind: 'house', inventory: goods() });
   tileAt(s, 8, 15).sapling = 1000; regrowForest(s);
   assert.equal(tileAt(s, 8, 15).node, null); assert.ok(findPath(s, s.buildings[0], { x: 8, z: 18 }));
+});
+
+test('outposts unlock only after a successful first expedition and stay unlocked after loading', () => {
+  const s = createGame(42), target = regionId(-1, 0);
+  assert.equal(outpostsUnlocked(s), false);
+  const blocked = place(s, 'outpost', 11, 9);
+  assert.equal(blocked.ok, false); assert.match(blocked.reason, /zuerst eine Expedition/);
+  assert.equal(explore(s, target).ok, false); assert.equal(outpostsUnlocked(s), false);
+  s.buildings[0].inventory = goods(50, 50, 50);
+  assert.equal(s.won, false); assert.equal(s.level, 1);
+  assert.ok(expeditionStatus(s, target).ok); assert.ok(explore(s, target).ok);
+  assert.ok(outpostsUnlocked(s)); assert.ok(outpostsUnlocked(deserialize(serialize(s))));
+  assert.ok(place(s, 'outpost', 11, 9).ok);
 });

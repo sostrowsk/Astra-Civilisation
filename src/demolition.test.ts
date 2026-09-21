@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, goods, place, step, tileAt, stock, demolitionCheck, demolishBuilding, housingCapacity, cancelConstruction, serialize, deserialize, placement, type GameState, type Tool, DEFINITIONS, walkable } from './sim.ts';
+import { createGame, explore, goods, place, step, tileAt, stock, demolitionCheck, demolishBuilding, housingCapacity, cancelConstruction, serialize, deserialize, placement, type GameState, type Tool, DEFINITIONS, walkable } from './sim.ts';
+import { regionId } from './generator.ts';
 import { openMine } from './mining.ts';
 function setup() {
   const s = createGame(42); s.level = 5;
@@ -84,6 +85,7 @@ test('demolishing the last building preserves stock and permits a fresh camp at 
 test('every finished building kind can be demolished, saved and replaced on its tile', () => {
   for (const kind of Object.keys(DEFINITIONS) as Exclude<Tool, 'road'>[]) {
     const s = setup();
+    if (kind === 'outpost') assert.ok(explore(s, regionId(-1,0)).ok);
     if (kind === 'camp') { assert.ok(demolishBuilding(s, 1).ok); }
     if (kind === 'bridge') Object.assign(tileAt(s, 10, 10), {kind:'water', waterway:'river'});
     const b = build(s, kind, kind === 'outpost' ? 15 : 10, 10);

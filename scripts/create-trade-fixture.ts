@@ -1,7 +1,10 @@
 // Explicitly funded visual QA world with genuine dispatch and vehicle reservations.
 import { mkdir, writeFile } from 'node:fs/promises';
-import { createGame, goods, place, step, serialize, deserialize } from '../src/sim.ts';
+import { createGame, explore, goods, place, step, serialize, deserialize } from '../src/sim.ts';
+import { regionId } from '../src/generator.ts';
 const s=createGame(42);s.level=4;
+s.buildings[0].inventory=goods(100,100,100);
+if(!explore(s,regionId(-1,0)).ok) throw new Error('Fixture expedition failed');
 for(const t of s.tiles) Object.assign(t,{kind:'grass',node:null,amount:0,sapling:0,waterway:null,height:1.2,biome:'meadow',road:t.z===12});
 s.buildings[0].inventory=goods(100,100,100);
 for(const [kind,x,z] of [['warehouse',10,12],['outpost',23,12]] as const) {

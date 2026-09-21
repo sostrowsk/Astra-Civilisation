@@ -24,9 +24,9 @@ Adresse: http://127.0.0.1:5173. GitHub Actions führt bei Push und Pull Request 
 Neue Partien erhalten einen zufälligen Seed. Über **Seed …** oder **Neues Spiel** lässt sich eine Zahl oder ein Text eingeben. Gleicher Seed erzeugt dieselbe Landschaft, andere Seeds neue Höhen, Wälder und Gewässer. Eine kleine Startlichtung und einige Vorkommen sichern den Einstieg.
 
 1. Holzfäller **7 / 10**, Sägewerk **9 / 10** und Steinbruch **9 / 8** bauen.
-2. Einen Außenposten mindestens fünf Felder vom Gründungslager entfernt errichten, beispielsweise **11 / 9**.
-3. Lagerhaus und zwei Wohnhäuser ergänzen. Alle sechs Pioniergebäudetypen und 14 Bewohner ermöglichen den Aufstieg zum **Dorf**.
-4. Über **Expeditionen** angrenzende Regionen erkunden. Jede Expedition ergänzt 26 × 24 Felder. In neuen Regionen ermöglichen Außenposten normales Bauen in neun Feldern Umkreis.
+2. Lagerhaus und Wohnhäuser ergänzen. Alle fünf Pioniergebäudetypen (Holzfäller, Sägewerk, Steinbruch, Wohnhaus, Lagerhaus), 14 Bewohner und die angezeigten Vorräte ermöglichen den Aufstieg zum **Dorf**. Ein Außenposten ist dafür nicht nötig.
+3. Über **Expeditionen** eine angrenzende Region erkunden. Die erste Expedition ist bereits im Pionierlager mit ausreichenden Vorräten möglich, ohne Außenposten. Jede Expedition ergänzt 26 × 24 Felder.
+4. Nach der ersten Expedition werden **Außenposten** freigeschaltet. Mindestens fünf Felder vom Gründungslager entfernt errichten, beispielsweise **11 / 9**. In neuen Regionen ermöglichen sie normales Bauen in neun Feldern Umkreis.
 
 Die Welt wächst nach Norden, Osten, Süden und Westen ohne feste Anzahl an Regionen. Globale Höhen-, Klima- und Feuchtigkeitsfelder erzeugen Wiesen, Nadelwald, Hochland und Steppe. Mäandernde Flüsse mit verbreiterten Seen und quer verlaufenden Nebenflüssen werden vor den Biomen bestimmt. Gelände und Erzadern werden an einer Erkundungs- oder Biomgrenze nicht neu gestartet.
 

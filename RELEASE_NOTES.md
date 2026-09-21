@@ -1,5 +1,12 @@
 # Release Notes
 
+## 21. September 2026 · Außenposten nach der ersten Expedition
+
+- Außenposten sind zu Spielbeginn gesperrt und werden erst mit der ersten erfolgreich gestarteten Expedition freigeschaltet. Bauleiste, Tastenkürzel und Platzierungsprüfung beachten dieselbe Regel.
+- Für die erste Expedition ist kein Außenposten nötig. Auch der Aufstieg zum Dorf benötigt nur noch die fünf übrigen Pioniergebäudetypen sowie Bewohner und Vorräte.
+- Aufgabenliste, Bauhinweise und Spielhilfe führen zuerst zur Expedition und anschließend zum Außenposten. Bestehende Erkundungen werden automatisch erkannt; kein Zurücksetzen von Spielständen nötig.
+- 101 Tests und Produktionsbuild erfolgreich. Regulärer Einstieg ohne Ressourcen-Cheats, Speichern/Laden und Freischaltung über den Expeditionsdialog im Browser geprüft.
+
 ## 21. September 2026 · Lokale Siedlungen, Händler und Fuhrpark
 
 - Normale Bewohner bleiben im Bereich von neun Feldern je Richtung um ihren Heimatort. Arbeitswege und Umwege beachten die Grenze; Transporte zwischen Orten übernehmen ausschließlich Händler.
