@@ -200,3 +200,10 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - 106 Tests erfolgreich. Sichtbereich einschließlich Kreisrand, Ausschluss diagonaler Außenpunkte, negative Koordinaten, Regionsübergänge, maximal 2.821 Felder bei ganzzahligem Fokus und unveränderte Weltdaten geprüft.
 - Browserprüfung in der isolierten Welt mit 25 Regionen (15.600 Felder): begrenzte Darstellung beim Herauszoomen und nachgeführter Ausschnitt beim Ziehen mit linker Maustaste. Übersichtskarte behält alle Regionen. Keine Konsolenfehler.
 - TypeScript und Produktionsbuild erfolgreich. Kein Hardware-FPS-Benchmark; die Simulation der übrigen Welt läuft weiter.
+
+## 21. September 2026 · Fokusgrenzen für vollständig gefüllte Sichtkreise
+
+- 109 Tests erfolgreich. Kontinuierliche Punkte im Kreis und auf seinem Rand gegen erkundete Felder geprüft: sämtliche Außenränder/Ecken, negative Koordinaten, konkave Regionsgrenzen und ein Loch im Karteninneren. Gültige Fokuspositionen bleiben erhalten, Kamerabegrenzung verändert keine gespeicherten Weltdaten.
+- Kleine Startwelt: Radius 11,5 statt 30; nach acht Expeditionen wächst er automatisch auf 30. Die zwischengespeicherte Grenzberechnung wird bei Erweiterung neu aufgebaut.
+- Browserprüfung in isolierter Welt mit 25 Regionen: wiederholtes Ziehen über den Kartenrand in beide Richtungen, vollständig gefüllter Ausschnitt auch herausgezoomt. Kleine Bergbauwelt: Begrenzung und gefüllter Sichtkreis unter Tage bestätigt. Keine Konsolenfehler.
+- TypeScript, Produktionsbuild und `git diff --check` erfolgreich. Bestehender Bundlegrößenhinweis unverändert.

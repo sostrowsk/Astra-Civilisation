@@ -1,4 +1,4 @@
-import { VISIBILITY_RADIUS, inViewRadius, visibleTiles } from './visibility.ts';
+import { VISIBILITY_RADIUS, constrainView, inViewRadius, visibleTiles } from './visibility.ts';
 import { isMerchant } from './logistics.ts';
 import { surfaceHeight, treeGrowthStage, pitResource } from './surface.ts';
 import { undergroundAt, ORE_COLORS } from './mining.ts';
@@ -241,6 +241,7 @@ export class World {
   selection: THREE.Mesh;
   revision = -1;
   viewFocus: Point = { x: 0, z: 0 };
+  viewRadius = VISIBILITY_RADIUS;
   depth = 0;
   keys = new Set<string>();
   selected: Point | null = null;
@@ -329,10 +330,10 @@ export class World {
     if (!hits.length) return null;
     const p = hits[0].point;
     const x = Math.round(p.x / UNIT + (ORIGINAL_WIDTH - 1) / 2), z = Math.round(p.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2);
-    return inViewRadius({x, z}, this.viewFocus) && tileAt(this.getState(), x, z) ? { x, z } : null;
+    return inViewRadius({x, z}, this.viewFocus, this.viewRadius) && tileAt(this.getState(), x, z) ? { x, z } : null;
   }
   hover(p: Point | null, tool: Tool | null) {
-    if (!p || !tool || !inViewRadius(p, this.viewFocus)) { this.preview.visible = false; return; }
+    if (!p || !tool || !inViewRadius(p, this.viewFocus, this.viewRadius)) { this.preview.visible = false; return; }
     const s = this.getState(), check = placement(s, tool, p.x, p.z);
     const bridge = false;
     const x = p.x;
@@ -346,11 +347,11 @@ export class World {
     for (const child of this.terrain.children) if (child instanceof THREE.InstancedMesh) child.dispose();
     this.terrain.clear(); this.tileTargets = [];
     if (this.depth) { this.rebuildUnderground(); return; }
-    const tiles = visibleTiles(s, this.viewFocus), land = tiles.filter(t => t.kind !== 'water');
+    const tiles = visibleTiles(s, this.viewFocus, this.viewRadius), land = tiles.filter(t => t.kind !== 'water');
     const sun = this.scene.getObjectByName('sun') as THREE.DirectionalLight;
     sun.target.position.set(wx(this.viewFocus.x), 0, wz(this.viewFocus.z));
     sun.position.copy(sun.target.position).add(new THREE.Vector3(-35, 65, 35));
-    const extent = VISIBILITY_RADIUS * UNIT * 1.2;
+    const extent = this.viewRadius * UNIT * 1.2;
     Object.assign(sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, far: 160 }); sun.shadow.camera.updateProjectionMatrix();
     const earth = new THREE.InstancedMesh(geometry, material('#997b53'), land.length);
     const grass = new THREE.InstancedMesh(geometry, material('#ffffff'), land.length);
@@ -416,7 +417,7 @@ export class World {
     waterMesh.receiveShadow = true; this.terrain.add(waterMesh);
     this.tileTargets.push(grass, waterMesh);
     this.buildings.clear(); this.buildingMeshes.clear();
-    for (const b of s.buildings.filter(b => inViewRadius(b, this.viewFocus))) {
+    for (const b of s.buildings.filter(b => inViewRadius(b, this.viewFocus, this.viewRadius))) {
       const model = buildingModel(b.kind);
       model.position.set(wx(b.x), b.kind === 'bridge' ? .42 : surfaceHeight(tileAt(s, b.x, b.z)), wz(b.z));
       const final = new THREE.Group();
@@ -437,7 +438,7 @@ export class World {
     this.scene.fog = new THREE.Fog(depth ? '#20282e' : '#cbd8ce', 1000, 2400);
   }
   rebuildUnderground() {
-    const s = this.getState(), tiles = visibleTiles(s, this.viewFocus).flatMap(t => {
+    const s = this.getState(), tiles = visibleTiles(s, this.viewFocus, this.viewRadius).flatMap(t => {
       const cell = undergroundAt(s, t.x, t.z, this.depth); return cell ? [cell] : [];
     });
     const mesh = new THREE.InstancedMesh(geometry, material('#ffffff'), tiles.length), dummy = new THREE.Object3D();
@@ -452,7 +453,7 @@ export class World {
     ores.forEach((t, i) => { for (let j = 0; j < 3; j++) { dummy.position.set(wx(t.x) - .35 + j * .3, .94, wz(t.z) + (j % 2 ? .27 : -.2)); dummy.scale.set(.22, .16, .28); dummy.updateMatrix(); oreMesh.setMatrixAt(i * 3 + j, dummy.matrix); oreMesh.setColorAt(i * 3 + j, new THREE.Color(t.color)); } });
     mesh.receiveShadow = true; this.terrain.add(mesh, oreMesh); this.tileTargets.push(mesh);
     this.buildings.clear(); this.buildingMeshes.clear();
-    for (const b of s.buildings.filter(b => b.kind === 'mine' && b.complete && inViewRadius(b, this.viewFocus))) { const marker = buildingModel('mine'); marker.position.set(wx(b.x), .12, wz(b.z)); this.buildings.add(marker); }
+    for (const b of s.buildings.filter(b => b.kind === 'mine' && b.complete && inViewRadius(b, this.viewFocus, this.viewRadius))) { const marker = buildingModel('mine'); marker.position.set(wx(b.x), .12, wz(b.z)); this.buildings.add(marker); }
     this.revision = s.revision;
   }
   render(dt: number, time: number) {
@@ -468,11 +469,17 @@ export class World {
       this.camera.position.add(offset); this.controls.target.add(offset);
     }
     this.controls.update();
-    const focus = { x: Math.round(this.controls.target.x / UNIT + (ORIGINAL_WIDTH - 1) / 2), z: Math.round(this.controls.target.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2) };
-    if (s.revision !== this.revision || focus.x !== this.viewFocus.x || focus.z !== this.viewFocus.z) {
-      this.viewFocus = focus; this.rebuild();
+    const requested = { x: this.controls.target.x / UNIT + (ORIGINAL_WIDTH - 1) / 2, z: this.controls.target.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2 };
+    const {focus, radius} = constrainView(s, requested);
+    if (focus.x !== Math.round(requested.x) || focus.z !== Math.round(requested.z)) {
+      // Move camera and target together, preserving zoom, rotation and viewing angle.
+      const correction = new THREE.Vector3(wx(focus.x) - this.controls.target.x, 0, wz(focus.z) - this.controls.target.z);
+      this.controls.target.add(correction); this.camera.position.add(correction);
     }
-    if (this.preview.visible && !inViewRadius({x:this.preview.position.x / UNIT + (ORIGINAL_WIDTH - 1) / 2, z:this.preview.position.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2}, this.viewFocus)) this.preview.visible = false;
+    if (s.revision !== this.revision || radius !== this.viewRadius || focus.x !== this.viewFocus.x || focus.z !== this.viewFocus.z) {
+      this.viewFocus = focus; this.viewRadius = radius; this.rebuild();
+    }
+    if (this.preview.visible && !inViewRadius({x:this.preview.position.x / UNIT + (ORIGINAL_WIDTH - 1) / 2, z:this.preview.position.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2}, this.viewFocus, this.viewRadius)) this.preview.visible = false;
     for (const b of s.buildings) {
       const model = this.buildingMeshes.get(b.id); if (!model) continue;
       const final = model.userData.final as THREE.Group;
@@ -482,7 +489,7 @@ export class World {
     const labelPositions: { x: number; y: number }[] = [];
     for (const v of s.villagers) {
       let g = this.personMeshes.get(v.id);
-      if (v.depth !== this.depth || !inViewRadius(v, this.viewFocus)) {
+      if (v.depth !== this.depth || !inViewRadius(v, this.viewFocus, this.viewRadius)) {
         if (g) g.visible = false;
         const label = this.workerLabels.get(v.id); if (label) label.hidden = true;
         continue;
@@ -594,7 +601,7 @@ export class World {
       if (v.cargo) cargo.material = material(v.cargo.resource === 'stone' ? '#98a6a4' : v.cargo.resource === 'planks' ? '#dbb375' : v.cargo.resource === 'food' ? '#c5a249' : v.cargo.resource === 'tools' ? '#718993' : v.cargo.resource === 'knowledge' ? '#899bbb' : '#89603e');
     }
     for (const [id, g] of this.personMeshes) if (!s.villagers.some(v => v.id === id)) { this.people.remove(g); this.personMeshes.delete(id); this.workerLabels.get(id)?.remove(); this.workerLabels.delete(id); }
-    this.selection.visible = !!this.selected && inViewRadius(this.selected, this.viewFocus);
+    this.selection.visible = !!this.selected && inViewRadius(this.selected, this.viewFocus, this.viewRadius);
     if (this.selected && this.selection.visible) this.selection.position.set(wx(this.selected.x), (this.depth ? undergroundAt(s, this.selected.x, this.selected.z, this.depth)?.solid ? 1.0 : .15 : surfaceHeight(tileAt(s, this.selected.x, this.selected.z)) + .03), wz(this.selected.z));
     this.renderer.render(this.scene, this.camera);
   }

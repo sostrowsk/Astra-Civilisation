@@ -1,5 +1,11 @@
 # Release Notes
 
+## 21. September 2026 · Fokus innerhalb der erkundeten Welt
+
+- Der Kamerafokus hält ausreichend Abstand zu Kartenrändern, fehlenden Regionen und Ecken, damit der Sichtkreis vollständig auf erkundetem Gelände liegt. Die Begrenzung gilt für Maus, Tastatur, Übersichtskarte und Regionssprünge, auch unter Tage.
+- Wo ein Kreis mit 30 Feldern Radius nicht hineinpasst, wird der größte vollständig passende Kreis verwendet. Neue Expeditionen aktualisieren die Grenzen automatisch. Zoom und Kamerawinkel bleiben beim Begrenzen erhalten.
+- 109 Tests und Produktionsbuild erfolgreich. Kartenränder, konkave Grenzen, Löcher, kleine Welten und Erweiterungen geprüft; Browserprüfung beim wiederholten Ziehen über den Kartenrand.
+
 ## 21. September 2026 · Sichtbereich von 30 Feldern
 
 - Die 3D-Ansicht ist auf 30 Felder Radius um das aktuelle Fokusfeld der Kamera begrenzt. Gelände, Wasser, Gebäude und Bewohner außerhalb dieses Bereichs werden ausgeblendet; verborgene Bewohner werden nicht animiert.
