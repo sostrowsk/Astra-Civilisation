@@ -1,3 +1,4 @@
+import { isMerchant, homeCapacity, bindHome, inLocalArea, workerPath, haulCapacity, merchantHome, sameSettlement, localBuilding, nearestCenter, LOCAL_RADIUS, availableVehicle, vehicleCapacity } from './logistics.ts';
 import { excavationCheck, pitResource, treeGrowthStage } from './surface.ts';
 import { capacity, roomFor, inbound, recordFlow, pruneHistory, equipmentFor, useEquipment, staffingSummary, type EconomyHistory } from './economy.ts';
 import { CHUNK_W, CHUNK_H, key, hash, generateChunk, regionCoords, regionId, regionFor, randomSeed, terrainSample } from './generator.ts';
@@ -20,7 +21,7 @@ export const DEFINITIONS: Record<BuildingKind, { name: string; cost: Stock; desc
   quarry: { name: 'Steinbruch', cost: goods(4, 2, 0), description: 'Ein Arbeiter gewinnt Stein aus Vorkommen im Umkreis von 9 Feldern.', producer: true },
   house: { name: 'Wohnhaus', cost: goods(3, 4, 2), description: 'Ein Zuhause für zwei neue Bewohner. Die Bevölkerungsgrenze steigt mit deiner Zivilisation auf bis zu 128.' },
   miningHouse: { name: 'Bergmannshaus', cost: goods(6, 10, 8), description: 'Vier Wohnplätze. Bewohner bevorzugen Minen in 12 Feldern Entfernung. Stelle dort bis zu vier Bergleute ein; freie Bewohner helfen beim Transport.', tier: 2 },
-  warehouse: { name: 'Lagerhaus', cost: goods(4, 4, 3), description: 'Sammelt Waren aus nahen Betrieben und verkürzt Transportwege.' },
+  warehouse: { name: 'Lagerhaus', cost: goods(4, 4, 3), description: 'Lager und Zuhause für vier Händler. Verbindet Orte: 2 Waren zu Fuß, ab Viehzucht 8 mit Pferdekarren, ab Kleinstadt 16 mit Kutsche.' },
   bridge: { name: 'Brücke', cost: goods(0, 4, 2), description: 'Ein Brückenfeld über Wasser. Vom erreichbaren Ufer aus Feld für Feld weiterbauen.' },
   farm: { name: 'Bauernhof', cost: goods(6, 8, 4), description: 'Erzeugt Nahrung. Auf Wiesen besonders ertragreich, in trockener Steppe langsamer.', producer: true, tier: 2 },
   forester: { name: 'Försterei', cost: goods(6, 10, 4), description: 'Fördert Wiederbewaldung im Umkreis von 7 Feldern. Wege und Bauplätze bleiben frei.', tier: 2 },
@@ -39,9 +40,9 @@ export const DEFINITIONS: Record<BuildingKind, { name: string; cost: Stock; desc
 export type Biome = 'meadow' | 'forest' | 'highland' | 'desert';
 export interface Tile extends Point { priorityFelling?: boolean; priorityQuarrying?: boolean; excavation?: { depth: number; remaining: number; ordered: boolean }; biome: Biome; region: number; discovered: boolean; sapling: number;  height: number; kind: 'grass' | 'water'; waterway: 'river' | 'lake' | null; node: 'tree' | 'rock' | null; amount: number; road: boolean; variant: number }
 export interface Building extends Point { priority?: number; forgeProduct?: 'shears' | 'drill'; manufacture?: 'wire' | 'gears' | 'machineParts'; equipmentUses?: number; id: number; kind: BuildingKind; complete: boolean; delivered: Stock; inventory: Stock; progress: number; active: boolean; bridgeEntrance?: Point; metal?: 'iron' | 'copper' | 'gold'; study?: 'planks' | 'copper' | 'gold'; mineWorkers?: number; mineDepth?: number; autoMine?: boolean; lastExportAt?: number; exportCursor?: number }
-export interface Task { kind: 'haul' | 'gather' | 'saw' | 'craft' | 'excavate'; layer?: number; phase: 'pickup' | 'work' | 'drop'; sourceId?: number; destId: number; resource: Resource; amount: number; node?: Point; path: Point[]; timer: number }
-export interface Villager extends Point { id: number; name: string; home?: number; job: number | null; task: Task | null; cargo: { resource: Resource; amount: number } | null; facing: number; depth: number; mining: MiningTrip | null }
-export interface GameState { version: 3; economyVersion?: 1 | 2; economy?: EconomyHistory; returns?: Stock; underground: UndergroundTile[]; level: number; regions: number[]; ecologyTick: number; woodGrown: number; seed: number; time: number; nextId: number; tiles: Tile[]; buildings: Building[]; villagers: Villager[]; milestones: BuildingKind[]; events: { time: number; message: string }[]; won: boolean; revision: number }
+export interface Task { vehicle?: 'cart' | 'coach'; kind: 'return' | 'haul' | 'gather' | 'saw' | 'craft' | 'excavate'; layer?: number; phase: 'pickup' | 'work' | 'drop'; sourceId?: number; destId: number; resource: Resource; amount: number; node?: Point; path: Point[]; timer: number }
+export interface Villager extends Point { role?: 'merchant'; settlement?: number; origin?: Point; id: number; name: string; home?: number; job: number | null; task: Task | null; cargo: { resource: Resource; amount: number } | null; facing: number; depth: number; mining: MiningTrip | null }
+export interface GameState { version: 3; logisticsVersion?: 1; economyVersion?: 1 | 2; economy?: EconomyHistory; returns?: Stock; underground: UndergroundTile[]; level: number; regions: number[]; ecologyTick: number; woodGrown: number; seed: number; time: number; nextId: number; tiles: Tile[]; buildings: Building[]; villagers: Villager[]; milestones: BuildingKind[]; events: { time: number; message: string }[]; won: boolean; revision: number }
 
 const distance = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.z - b.z);
 const tileIndexes = new WeakMap<GameState, { length: number; index: Map<string, Tile> }>();
@@ -66,9 +67,9 @@ export function walkable(s: GameState, x: number, z: number): boolean {
   const tile = tileAt(s, x, z);
   return !!tile && tile.discovered && !tile.node && (tile.kind !== 'water' || !!s.buildings.find(b => b.kind === 'bridge' && b.complete && b.z === z && x === b.x));
 }
-export function findPath(s: GameState, start: Point, target: Point): Point[] | null {
+export function findPath(s: GameState, start: Point, target: Point, allowed?: (p: Point) => boolean): Point[] | null {
   const origin = { x: Math.round(start.x), z: Math.round(start.z) };
-  if (!walkable(s, origin.x, origin.z) || !walkable(s, target.x, target.z)) return null;
+  if (!walkable(s, origin.x, origin.z) || !walkable(s, target.x, target.z) || (allowed && (!allowed(origin) || !allowed(target)))) return null;
   const from = key(origin.x, origin.z), to = key(target.x, target.z);
   if (from === to) return [];
   const previous = new Map<string, Point>(), queue = [origin]; previous.set(from, origin);
@@ -76,7 +77,7 @@ export function findPath(s: GameState, start: Point, target: Point): Point[] | n
     const current = queue[n];
     for (const [dx, dz] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
       const next = { x: current.x + dx, z: current.z + dz }, k = key(next.x, next.z);
-      if (previous.has(k) || !walkable(s, next.x, next.z)) continue;
+      if (previous.has(k) || !walkable(s, next.x, next.z) || (allowed && !allowed(next))) continue;
       previous.set(k, current);
       if (k === to) { const result: Point[] = []; for (let p = next; key(p.x, p.z) !== from; p = previous.get(key(p.x, p.z))!) result.push(p); return result.reverse(); }
       queue.push(next);
@@ -85,16 +86,17 @@ export function findPath(s: GameState, start: Point, target: Point): Point[] | n
   return null;
 }
 export function createGame(seed = randomSeed()): GameState {
-  const s: GameState = { version: 3, economyVersion: 2, economy: { startedAt: 0, buckets: [] }, returns: emptyStock(), underground: [], level: 1, regions: [0], ecologyTick: 0, woodGrown: 0, seed: seed >>> 0, time: 0, nextId: 2, tiles: generateChunk(seed >>> 0, 0), buildings: [{ id: 1, x: 8, z: 12, kind: 'camp', complete: true, progress: 1, delivered: emptyStock(), inventory: goods(18, 4, 12), active: true }], villagers: [], milestones: [], events: [{ time: 0, message: 'Zehn Menschen. Eine neue Welt. Seed ' + (seed >>> 0) }], won: false, revision: 0 };
-  for (let i = 0; i < 10; i++) addVillager(s);
+  const s: GameState = { version: 3, logisticsVersion: 1, economyVersion: 2, economy: { startedAt: 0, buckets: [] }, returns: emptyStock(), underground: [], level: 1, regions: [0], ecologyTick: 0, woodGrown: 0, seed: seed >>> 0, time: 0, nextId: 2, tiles: generateChunk(seed >>> 0, 0), buildings: [{ id: 1, x: 8, z: 12, kind: 'camp', complete: true, progress: 1, delivered: emptyStock(), inventory: goods(18, 4, 12), active: true }], villagers: [], milestones: [], events: [{ time: 0, message: 'Zehn Menschen. Eine neue Welt. Seed ' + (seed >>> 0) }], won: false, revision: 0 };
+  for (let i = 0; i < 10; i++) addVillager(s, s.buildings[0]);
   for (let x = 7; x <= 11; x++) tileAt(s, x, 13).road = true;
   return s;
 }
 const PEOPLE = ['Alva', 'Bruno', 'Clara', 'Emil', 'Frida', 'Jonas', 'Lina', 'Milo', 'Nora', 'Oskar', 'Ada', 'Ben', 'Ella', 'Finn', 'Greta', 'Hugo', 'Ida', 'Jona', 'Kira', 'Leo'];
-function addVillager(s: GameState, home?: Building) {
+function addVillager(s: GameState, home?: Building, merchant = false) {
   const i = s.villagers.length;
   const arrival = home ?? s.buildings.find(b => b.complete && ['camp', 'house'].includes(b.kind)) ?? settlementOrigins(s)[0];
-  s.villagers.push({ id: i + 1, name: PEOPLE[i % PEOPLE.length] + (i >= 20 ? ` ${Math.floor(i / 20) + 1}` : ''), x: i < 10 ? 7 + (i % 4) : 8, z: i < 10 ? 13 + Math.floor(i / 4) : 12, job: null, task: null, cargo: null, facing: 0, depth: 0, mining: null, ...(i >= 10 && arrival ? { x: arrival.x, z: arrival.z } : {}), ...(home ? { home: home.id } : {}) });
+  s.villagers.push({ id: i + 1, name: PEOPLE[i % PEOPLE.length] + (i >= 20 ? ` ${Math.floor(i / 20) + 1}` : ''), x: i < 10 ? 7 + (i % 4) : 8, z: i < 10 ? 13 + Math.floor(i / 4) : 12, job: null, task: null, cargo: null, facing: 0, depth: 0, mining: null, ...(i >= 10 && arrival ? { x: arrival.x, z: arrival.z } : {}), ...(home ? { home: home.id } : {}), ...(merchant ? {role:'merchant' as const} : {}) });
+  bindHome(s, s.villagers.at(-1)!, home);
 }
 export function event(s: GameState, message: string) {
   s.events.unshift({ time: s.time, message }); s.events.length = Math.min(s.events.length, 30);
@@ -144,8 +146,7 @@ export function cancelConstruction(s: GameState, id: number): boolean {
   s.returns ??= emptyStock();
   for (const r of RESOURCES) s.returns[r] += b.delivered[r];
   for (const v of s.villagers) if (v.task?.destId === id) {
-    if (v.cargo) { s.returns[v.cargo.resource] += v.cargo.amount; v.cargo = null; v.task = null; }
-    else v.task = null;
+    returnCargo(s, v);
   }
   s.buildings = s.buildings.filter(b => b.id !== id); s.revision++;
   distributeReturns(s);
@@ -158,9 +159,12 @@ export function demolitionCheck(s: GameState, id: number): { ok: boolean; reason
   return { ok: true, reason: 'Gebäude kann abgerissen werden.' };
 }
 function returnCargo(s: GameState, v: Villager) {
+  const vehicle = v.task?.vehicle;
   s.returns ??= emptyStock();
   if (v.cargo) s.returns[v.cargo.resource] += v.cargo.amount;
   v.cargo = null; v.task = null;
+  const home = isMerchant(v) && merchantHome(s, v);
+  if (home && vehicle) v.task = {kind:'return', phase:'drop', destId:home.id, resource:'wood', amount:1, path:workerPath(s,v,home) ?? [], timer:0, vehicle};
 }
 function distributeReturns(s: GameState) {
   if (!s.returns) return;
@@ -175,7 +179,7 @@ export function demolishBuilding(s: GameState, id: number): { ok: boolean; reaso
   s.returns ??= emptyStock();
   for (const r of RESOURCES) s.returns[r] += b.inventory[r];
   for (const v of s.villagers) {
-    if (v.home === id) delete v.home;
+    if (v.home === id) { delete v.home; if (isMerchant(v)) returnCargo(s, v); }
     if (v.mining?.mineId === id) {
       returnCargo(s, v); v.mining = null; v.depth = 0; v.x = b.x; v.z = b.z;
     }
@@ -184,6 +188,7 @@ export function demolishBuilding(s: GameState, id: number): { ok: boolean; reaso
       returnCargo(s, v);
     }
     if (v.job === id) v.job = null;
+    if (v.settlement === id) delete v.settlement;
   }
   for (const tile of s.underground) if (tile.order === id) tile.order = null;
   s.buildings = s.buildings.filter(n => n.id !== id);
@@ -205,13 +210,13 @@ export function demolishBuilding(s: GameState, id: number): { ok: boolean; reaso
         const dest = entrance(s.buildings.find(n => n.id === t.destId)!);
         const source = s.buildings.find(n => n.id === t.sourceId);
         const target = t.path.at(-1) ?? { x: Math.round(v.x), z: Math.round(v.z) };
-        const path = findPath(s, v, target);
-        if (!path || !findPath(s, target, dest) || (t.phase === 'pickup' && source && !findPath(s, entrance(source), dest))) returnCargo(s, v);
+        const path = workerPath(s, v, target);
+        if (!path || !workerPath(s, v, dest, target) || (t.phase === 'pickup' && source && !workerPath(s, v, dest, entrance(source)))) returnCargo(s, v);
         else t.path = path;
       }
       if (v.mining?.stage === 'approach') {
         const mine = s.buildings.find(n => n.id === v.mining!.mineId)!;
-        const path = findPath(s, v, mine);
+        const path = workerPath(s, v, mine);
         if (path) v.mining.path = path;
         else { returnCargo(s, v); v.mining = null; v.job = null; }
       }
@@ -226,7 +231,7 @@ function available(s: GameState, b: Building, r: Resource) {
   return b.inventory[r] - s.villagers.reduce((n, v) => n + (v.task?.sourceId === b.id && v.task.phase === 'pickup' && v.task.resource === r ? v.task.amount : 0), 0);
 }
 function incoming(s: GameState, b: Building, r: Resource) {
-  return s.villagers.reduce((n, v) => n + (v.task?.destId === b.id && v.task.resource === r ? v.task.amount : 0), 0);
+  return s.villagers.reduce((n, v) => n + (v.task?.kind !== 'return' && v.task?.destId === b.id && v.task.resource === r ? v.task.amount : 0), 0);
 }
 function unreservedStock(s: GameState, r: Resource) {
   return s.buildings.filter(b => b.complete).reduce((n, b) => n + available(s, b, r), 0);
@@ -238,24 +243,26 @@ function foundingReserve(s: GameState, r: Resource) {
 function sourceFor(s: GameState, v: Villager, r: Resource, exclude?: number) {
   return s.buildings.filter(b => b.complete && b.id !== exclude && available(s, b, r) > 0)
     .sort((a, b) => distance(v, a) - distance(v, b))
-    .find(b => findPath(s, v, entrance(b)) !== null);
+    .find(b => (!exclude || isMerchant(v) || sameSettlement(s, b, s.buildings.find(n => n.id === exclude)!)) && workerPath(s, v, entrance(b)) !== null);
 }
 function assignHaul(s: GameState, v: Villager, from: Building, to: Building, r: Resource, amount: number) {
+  if (!isMerchant(v) && !sameSettlement(s, from, to)) return false;
+  amount = Math.min(amount, haulCapacity(s, v));
   if (to.complete) amount = Math.min(amount, roomFor(s, to, r));
-  if (amount <= 0 || !findPath(s, entrance(from), entrance(to))) return false;
-  const path = findPath(s, v, entrance(from)); if (!path) return false;
-  v.task = { kind: 'haul', phase: 'pickup', sourceId: from.id, destId: to.id, resource: r, amount, path, timer: 0 };
+  if (amount <= 0 || !workerPath(s, v, entrance(to), entrance(from))) return false;
+  const path = workerPath(s, v, entrance(from)); if (!path) return false;
+  v.task = { kind: 'haul', ...(availableVehicle(s, v) ? {vehicle:availableVehicle(s, v)} : {}), phase: 'pickup', sourceId: from.id, destId: to.id, resource: r, amount, path, timer: 0 };
   return true;
 }
 function assignCarrier(s: GameState, v: Villager) {
-  for (const b of s.buildings.filter(b => !b.complete)) for (const r of RESOURCES) {
+  for (const b of s.buildings.filter(b => !b.complete && localBuilding(s, v, b))) for (const r of RESOURCES) {
     const need = DEFINITIONS[b.kind].cost[r] - b.delivered[r] - incoming(s, b, r);
     if (need <= 0) continue;
     const source = sourceFor(s, v, r, b.id);
     const budget = Math.max(0, unreservedStock(s, r) - (b.kind === 'woodcutter' ? 0 : foundingReserve(s, r)));
-    if (source && budget > 0 && assignHaul(s, v, source, b, r, Math.min(2, need, available(s, source, r), budget))) return;
+    if (source && budget > 0 && assignHaul(s, v, source, b, r, Math.min(haulCapacity(s, v), need, available(s, source, r), budget))) return;
   }
-  for (const b of s.buildings.filter(b => b.complete && b.active && equipmentFor(b) && !(b.equipmentUses ?? 0))) {
+  for (const b of s.buildings.filter(b => b.complete && b.active && localBuilding(s, v, b) && equipmentFor(b) && !(b.equipmentUses ?? 0))) {
     const r = equipmentFor(b)!;
     if (b.inventory[r] || roomFor(s, b, r) < 2) continue;
     const source = sourceFor(s, v, r, b.id);
@@ -263,21 +270,61 @@ function assignCarrier(s: GameState, v: Villager) {
   }
   // Rotate between producers and goods. Fixed building order starves later mines
   // whenever early woodcutters keep producing faster than carriers collect.
-  const producers = s.buildings.filter(b => b.complete && !isStorage(b))
+  const producers = s.buildings.filter(b => b.complete && !isStorage(b) && localBuilding(s, v, b))
     .sort((a, b) => (a.lastExportAt ?? -1) - (b.lastExportAt ?? -1) || distance(v, a) - distance(v, b) || a.id - b.id);
   for (const b of producers) for (let offset = 0; offset < RESOURCES.length; offset++) {
     const index = ((b.exportCursor ?? 0) + offset) % RESOURCES.length, r = RESOURCES[index];
     const recipe = recipeFor(s, b);
     if (available(s, b, r) <= 0 || recipe?.fuel === r || recipe?.input === r || equipmentFor(b) === r) continue;
-    const dest = s.buildings.filter(isStorage).sort((a, c) => distance(b, a) - distance(b, c)).find(c => roomFor(s, c, r) > 0 && findPath(s, b, c) !== null);
-    if (dest && assignHaul(s, v, b, dest, r, Math.min(2, available(s, b, r)))) {
+    const dest = s.buildings.filter(isStorage).sort((a, c) => distance(b, a) - distance(b, c)).find(c => roomFor(s, c, r) > 0 && (isMerchant(v) || sameSettlement(s, b, c)) && workerPath(s, v, c, b) !== null);
+    if (dest && assignHaul(s, v, b, dest, r, Math.min(haulCapacity(s, v), available(s, b, r)))) {
       b.lastExportAt = s.time; b.exportCursor = (index + 1) % RESOURCES.length; return;
     }
   }
 }
-function gatherPath(s: GameState, from: Point, node: Point): Point[] | undefined {
+function assignMerchant(s: GameState, v: Villager) {
+  const deliver = (dest: Building, r: Resource, need: number) => {
+    if (need <= 0) return false;
+    const sources = s.buildings.filter(b => {
+      const recipe = recipeFor(s, b);
+      const exportable = isStorage(b) || (recipe?.input !== r && recipe?.fuel !== r && equipmentFor(b) !== r);
+      return b.complete && b.id !== dest.id && exportable && available(s, b, r) > 0;
+    })
+      .sort((a, b) => distance(v, a) + distance(a, dest) - distance(v, b) - distance(b, dest));
+    for (const from of sources) {
+      const budget = Math.max(0, unreservedStock(s, r) - (dest.kind === 'woodcutter' ? 0 : foundingReserve(s, r)));
+      if (assignHaul(s, v, from, dest, r, Math.min(need, available(s, from, r), budget))) return true;
+    }
+    return false;
+  };
+  for (const b of s.buildings.filter(b => !b.complete)) for (const r of RESOURCES) {
+    if (deliver(b, r, DEFINITIONS[b.kind].cost[r] - b.delivered[r] - incoming(s, b, r))) return;
+  }
+  for (const b of s.buildings.filter(b => b.complete && b.active && DEFINITIONS[b.kind].producer)) {
+    const recipe = recipeFor(s, b), equipment = equipmentFor(b);
+    for (const r of [recipe?.input, recipe?.fuel, equipment].filter((r): r is Resource => !!r)) {
+      const desired = r === equipment ? 1 : Math.min(10, capacity(b, r));
+      if (deliver(b, r, desired - b.inventory[r] - incoming(s, b, r))) return;
+    }
+  }
+  // Spread exports across depots and resources; reservations prevent opposite-direction ping-pong.
+  const stores = s.buildings.filter(isStorage).sort((a, b) => (a.lastExportAt ?? -1) - (b.lastExportAt ?? -1) || a.id - b.id);
+  for (const from of stores) for (let offset = 0; offset < RESOURCES.length; offset++) {
+    const index = ((from.exportCursor ?? 0) + offset) % RESOURCES.length, r = RESOURCES[index];
+    for (const dest of stores.filter(b => b.id !== from.id && !sameSettlement(s, from, b))) {
+      const surplus = Math.floor((available(s, from, r) - dest.inventory[r] - incoming(s, dest, r)) / 2);
+      if (surplus < 2) continue;
+      const budget = Math.max(0, unreservedStock(s, r) - foundingReserve(s, r));
+      if (assignHaul(s, v, from, dest, r, Math.min(surplus, budget))) {
+        from.lastExportAt = s.time; from.exportCursor = (index + 1) % RESOURCES.length; return;
+      }
+    }
+  }
+  assignCarrier(s, v);
+}
+function gatherPath(s: GameState, from: Point, node: Point, worker?: Villager): Point[] | undefined {
   const spots = [{ x: node.x - 1, z: node.z }, { x: node.x + 1, z: node.z }, { x: node.x, z: node.z - 1 }, { x: node.x, z: node.z + 1 }];
-  return spots.map(p => findPath(s, from, p)).filter((p): p is Point[] => p !== null).sort((a, b) => a.length - b.length)[0];
+  return spots.map(p => worker ? workerPath(s, worker, p, from) : findPath(s, from, p)).filter((p): p is Point[] => p !== null).sort((a, b) => a.length - b.length)[0];
 }
 export function markTreeForFelling(s: GameState, x: number, z: number, marked = true): boolean {
   const tile = tileAt(s, x, z);
@@ -320,14 +367,14 @@ function assignProducer(s: GameState, v: Villager, b: Building) {
       if (source) assignHaul(s, v, source, b, r, 1);
       return;
     }
-    const path = findPath(s, v, b); if (!path) return;
+    const path = workerPath(s, v, b); if (!path) return;
     for (const r of [recipe.input, recipe.fuel]) if (r) { b.inventory[r]--; recordFlow(s, 'consumed', r, 1); }
     const boosted = equipment ? useEquipment(s, b) && equipment === 'machineParts' : false;
     v.task = { kind: 'craft', phase: 'work', destId: b.id, resource: recipe.output, amount: 1, path, timer: recipe.seconds / (boosted ? 1.25 : 1) };
     return;
   }
   const quarry = b.kind === 'quarry';
-  const nodes = s.tiles.filter(t => t.discovered && distance(b, t) <= 9 && ((t.node === (quarry ? 'rock' : 'tree') && t.amount > 0) || (quarry && t.excavation?.ordered && excavationCheck(s, t.x, t.z).ok)))
+  const nodes = s.tiles.filter(t => t.discovered && inLocalArea(s, v, t) && distance(b, t) <= 9 && ((t.node === (quarry ? 'rock' : 'tree') && t.amount > 0) || (quarry && t.excavation?.ordered && excavationCheck(s, t.x, t.z).ok)))
     .sort((a, c) => (Number(!!(c.priorityFelling || c.priorityQuarrying)) * 2 + Number(!!c.excavation?.ordered)) - (Number(!!(a.priorityFelling || a.priorityQuarrying)) * 2 + Number(!!a.excavation?.ordered)) || distance(v, a) - distance(v, c));
   for (const node of nodes) {
     const pit = quarry && !node.node ? node.excavation : undefined;
@@ -335,7 +382,7 @@ function assignProducer(s: GameState, v: Villager, b: Building) {
     const reserved = pit ? s.villagers.reduce((n, w) => n + (w.task?.kind === 'excavate' && w.task.phase === 'work' && w.task.node?.x === node.x && w.task.node.z === node.z ? w.task.amount : 0), 0) : 0;
     const amount = pit ? Math.min(2, pit.remaining - reserved) : 2;
     if (amount <= 0 || roomFor(s, b, resource) < amount) continue;
-    const path = pit ? findPath(s, v, node) : gatherPath(s, v, node);
+    const path = pit ? workerPath(s, v, node) : gatherPath(s, v, node, v);
     if (!path) continue;
     v.task = { kind: pit ? 'excavate' : 'gather', ...(pit ? { layer: pit.depth + 1 } : {}), phase: 'work', destId: b.id, resource, amount, node: { x: node.x, z: node.z }, path, timer: quarry ? 5 : 4 };
     return;
@@ -343,6 +390,11 @@ function assignProducer(s: GameState, v: Villager, b: Building) {
 }
 function finishTask(s: GameState, v: Villager) {
   const t = v.task!;
+  if (t.kind === 'return') {
+    const home = merchantHome(s, v);
+    if (!home || distance(v, home) < .1) { v.task = null; return; }
+    t.path = workerPath(s, v, home) ?? []; return;
+  }
   if (t.phase === 'pickup') {
     const source = s.buildings.find(b => b.id === t.sourceId);
     if (!source || source.inventory[t.resource] < t.amount) { v.task = null; return; }
@@ -350,7 +402,7 @@ function finishTask(s: GameState, v: Villager) {
     v.cargo = { resource: t.resource, amount: t.amount };
     const destination = s.buildings.find(b => b.id === t.destId);
     if (!destination) { returnCargo(s, v); return; }
-    t.destId = destination.id; t.phase = 'drop'; t.path = findPath(s, v, entrance(destination)) ?? [];
+    t.destId = destination.id; t.phase = 'drop'; t.path = workerPath(s, v, entrance(destination)) ?? [];
     return;
   }
   if (t.phase === 'work' && t.kind === 'excavate') {
@@ -360,7 +412,7 @@ function finishTask(s: GameState, v: Villager) {
     pit.remaining -= amount; recordFlow(s, 'produced', t.resource, amount);
     if (!pit.remaining) { pit.depth++; pit.ordered = false; s.revision++; event(s, `Tagebau ${node.x} / ${node.z}: Ebene ${pit.depth} fertig abgegraben.`); }
     t.amount = amount; v.cargo = { resource: t.resource, amount }; t.phase = 'drop';
-    t.path = findPath(s, v, s.buildings.find(b => b.id === t.destId)!) ?? [];
+    t.path = workerPath(s, v, s.buildings.find(b => b.id === t.destId)!) ?? [];
     return;
   }
   if (t.phase === 'work' && t.kind === 'gather') {
@@ -374,7 +426,7 @@ function finishTask(s: GameState, v: Villager) {
     }
     t.amount = amount; v.cargo = { resource: t.resource, amount };
     const dest = s.buildings.find(b => b.id === t.destId)!;
-    t.phase = 'drop'; t.path = findPath(s, v, dest) ?? [];
+    t.phase = 'drop'; t.path = workerPath(s, v, dest) ?? [];
     return;
   }
   if (t.phase === 'work' && (t.kind === 'saw' || t.kind === 'craft')) {
@@ -394,12 +446,14 @@ function finishTask(s: GameState, v: Villager) {
       (b.complete ? b.inventory : b.delivered)[v.cargo.resource] += v.cargo.amount;
     }
     v.cargo = null; v.task = null;
+    const home = merchantHome(s, v);
+    if (isMerchant(v) && home) v.task = {kind:'return', phase:'drop', destId:home.id, resource:'wood', amount:1, path:workerPath(s,v,home) ?? [], timer:0, ...(t.vehicle ? {vehicle:t.vehicle} : {})};
   }
 }
 export function step(s: GameState, dt: number) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   // The application calls this in fixed 0.1-second increments.
-  s.time += dt; pruneHistory(s);
+  s.time += dt; pruneHistory(s); syncResidents(s);
   distributeReturns(s);
   for (const b of s.buildings) if (!b.complete && RESOURCES.every(r => b.delivered[r] >= DEFINITIONS[b.kind].cost[r])) {
     b.progress = Math.min(1, b.progress + dt / (b.kind === 'bridge' ? 12 : 8));
@@ -409,7 +463,7 @@ export function step(s: GameState, dt: number) {
       if (!s.milestones.includes(b.kind)) s.milestones.push(b.kind);
       event(s, `${DEFINITIONS[b.kind].name} fertiggestellt!`);
       if (b.kind === 'mine') openMine(s, b);
-      if (b.kind === 'camp' || b.kind === 'house' || b.kind === 'miningHouse') welcomeResidents(s);
+      if (['camp', 'house', 'miningHouse', 'warehouse'].includes(b.kind)) { syncResidents(s); welcomeResidents(s); }
       if (b.kind === 'outpost' && !s.won) { s.won = true; event(s, 'Ein neues Kapitel beginnt. Euer erster Außenposten steht!'); }
     }
   }
@@ -421,17 +475,20 @@ export function step(s: GameState, dt: number) {
     let surplus = staff.length - (b.active && b.complete ? workerTarget(b) : 0);
     for (const v of [...staff].reverse()) if (surplus > 0 && !v.task && !v.mining) { v.job = null; surplus--; }
   }
-  const room = (b: Building) => s.villagers.filter(v => v.job === b.id).length < workerTarget(b);
+  for (const v of s.villagers) if (v.job && !v.task && !v.mining) {
+    const b = s.buildings.find(b => b.id === v.job);
+    if (isMerchant(v) || !b || !workerPath(s, v, b)) v.job = null;
+  }
   // Essential first positions precede extra mining positions at equal priority.
   for (let priority = 2; priority >= 0; priority--) for (let slot = 0; slot < 4; slot++) for (const b of producers.filter(b => (b.priority ?? 1) === priority)) {
     if (workerTarget(b) <= slot || s.villagers.filter(v => v.job === b.id).length > slot) continue;
-    const unemployed = s.villagers.filter(v => v.job === null);
-    const preferred = (v: Villager) => b.kind === 'mine' && v.home && distance(s.buildings.find(h => h.id === v.home)!, b) <= 12 ? 0 : 1;
-    let worker = unemployed.length > 2 ? unemployed.filter(v => !v.task && !v.mining).sort((a, c) => preferred(a) - preferred(c) || distance(a, b) - distance(c, b) || a.id - c.id).find(v => findPath(s, v, b) !== null) : undefined;
+    const unemployed = s.villagers.filter(v => v.job === null && !isMerchant(v));
+    const preferred = (v: Villager) => b.kind === 'mine' && v.home && s.buildings.some(h => h.id === v.home && h.kind === 'miningHouse' && distance(h, b) <= 12) ? 0 : 1;
+    let worker = unemployed.length > 2 ? unemployed.filter(v => !v.task && !v.mining).sort((a, c) => preferred(a) - preferred(c) || distance(a, b) - distance(c, b) || a.id - c.id).find(v => workerPath(s, v, b) !== null) : undefined;
     if (!worker) worker = s.villagers.find(v => {
-      if (!v.job || v.task || v.mining) return false;
+      if (isMerchant(v) || !v.job || v.task || v.mining) return false;
       const donor = producers.find(n => n.id === v.job);
-      return donor && ((donor.priority ?? 1) < priority || ((donor.priority ?? 1) === priority && slot === 0 && s.villagers.filter(n => n.job === donor.id).length > 1)) && findPath(s, v, b) !== null;
+      return donor && ((donor.priority ?? 1) < priority || ((donor.priority ?? 1) === priority && slot === 0 && s.villagers.filter(n => n.job === donor.id).length > 1)) && workerPath(s, v, b) !== null;
     });
     if (worker) worker.job = b.id;
   }
@@ -439,14 +496,15 @@ export function step(s: GameState, dt: number) {
     if (v.mining) { stepMiner(s, v, dt); continue; }
     if (!v.task) {
       const b = s.buildings.find(b => b.id === v.job);
-      if (b?.active) assignProducer(s, v, b); else assignCarrier(s, v);
+      if (isMerchant(v)) { if (merchantHome(s, v)) assignMerchant(s, v); }
+      else if (b?.active && localBuilding(s, v, b)) assignProducer(s, v, b); else assignCarrier(s, v);
       continue;
     }
     const t = v.task;
     if (t.path.length) {
       const target = t.path[0], dx = target.x - v.x, dz = target.z - v.z, d = Math.hypot(dx, dz);
       const current = tileAt(s, Math.round(v.x), Math.round(v.z));
-      const movement = dt * (current.road ? 2.4 : 1.5);
+      const movement = dt * (current.road ? 2.4 : 1.5) * (v.task?.vehicle ? 1.3 : 1);
       v.facing = Math.atan2(dx, dz);
       if (d <= movement) { v.x = target.x; v.z = target.z; t.path.shift(); }
       else { v.x += dx / d * movement; v.z += dz / d * movement; }
@@ -463,7 +521,7 @@ export function buildingStatus(s: GameState, b: Building): string {
   if (!DEFINITIONS[b.kind].producer) return b.kind === 'bridge' ? 'Brückenfeld begehbar' : 'Bereit';
   if (b.kind === 'mine') return mineStatus(s, b);
   const worker = s.villagers.find(v => v.job === b.id);
-  if (!worker) { const staffing = staffingSummary(s); return staffing.carriers <= 2 ? 'Personalmangel · zwei Träger bleiben frei. Wohnraum schaffen oder Betriebspriorität erhöhen.' : 'Wartet auf freien, erreichbaren Arbeiter · laufende Lieferungen werden zuerst beendet.'; }
+  if (!worker) { const staffing = staffingSummary(s); return staffing.carriers <= 2 ? 'Personalmangel · zwei Träger bleiben frei. Wohnraum schaffen oder Betriebspriorität erhöhen.' : 'Kein freier Bewohner im örtlichen 9-Felder-Bereich · Wohnhäuser und Außenposten in der Nähe schaffen.'; }
   const recipe = recipeFor(s, b);
   if (worker.task) return recipe ? `${recipe.input ? NAMES[recipe.input] + ' → ' : ''}${NAMES[recipe.output]} wird produziert` : 'Rohstoffe werden gewonnen';
   if (b.kind === 'quarry') {
@@ -489,7 +547,7 @@ export function deserialize(raw: string): GameState {
   const validPoint = (p: Point, whole = true) => p && finite(p.x) && finite(p.z) && !!tileAt(s, Math.round(p.x), Math.round(p.z)) && (!whole || (Number.isInteger(p.x) && Number.isInteger(p.z)));
   const legacy = s?.version === 3 && (s.economyVersion === undefined || s.economyVersion === 1);
   if (legacy && Array.isArray(s.buildings)) for (const b of s.buildings) for (const a of [b.inventory, b.delivered]) if (a) for (const r of ['shears', 'drill', 'wool', 'cloth', 'clothes', 'wire', 'gears', 'machineParts'] as const) a[r] ??= 0;
-  if (!s || s.version !== 3 || !integer(s.seed) || !finite(s.time) || s.time < 0 || !integer(s.nextId) || !integer(s.revision) || typeof s.won !== 'boolean' || !Array.isArray(s.tiles) || s.tiles.length !== s.regions?.length * CHUNK_W * CHUNK_H || !Array.isArray(s.buildings) || s.buildings.length > s.tiles.length || !Array.isArray(s.villagers) || s.villagers.length < 10 || s.villagers.length > 128 || !Array.isArray(s.milestones) || !Array.isArray(s.events)) fail();
+  if (!s || s.version !== 3 || !integer(s.seed) || !finite(s.time) || s.time < 0 || !integer(s.nextId) || !integer(s.revision) || typeof s.won !== 'boolean' || !Array.isArray(s.tiles) || s.tiles.length !== s.regions?.length * CHUNK_W * CHUNK_H || !Array.isArray(s.buildings) || s.buildings.length > s.tiles.length || !Array.isArray(s.villagers) || s.villagers.length < 10 || s.villagers.length > 128 + s.tiles.length * 4 || !Array.isArray(s.milestones) || !Array.isArray(s.events)) fail();
   for (const [i, t] of s.tiles.entries()) if (!validPoint(t) || !inside(t.x, t.z) || !['grass', 'water'].includes(t.kind) || ![null, 'tree', 'rock'].includes(t.node) || !integer(t.amount) || !finite(t.height) || t.height < 0 || t.height > 20 || !finite(t.variant) || typeof t.road !== 'boolean') fail();
   for (const t of s.tiles) if (t.priorityFelling !== undefined && (typeof t.priorityFelling !== 'boolean' || (t.priorityFelling && (!t.discovered || t.node !== 'tree' || !t.amount)))) fail();
   if (!integer(s.level) || s.level < 1 || s.level > 5 || !Array.isArray(s.regions) || !s.regions.includes(0) || new Set(s.regions).size !== s.regions.length || !s.regions.every(id => integer(id) && Number.isSafeInteger(id)) || !integer(s.ecologyTick) || !integer(s.woodGrown)) fail();
@@ -518,12 +576,18 @@ export function deserialize(raw: string): GameState {
   const peopleIds = new Set<number>();
   for (const v of s.villagers) {
     if (!validPoint(v, false) || !integer(v.id) || peopleIds.has(v.id) || typeof v.name !== 'string' || v.name.length > 40 || !finite(v.facing) || (v.job !== null && !ids.has(v.job))) fail();
-    if (v.home !== undefined && !s.buildings.some(b => b.id === v.home && b.kind === 'miningHouse' && b.complete)) fail();
+    if (v.role !== undefined && v.role !== 'merchant') fail();
+    if (v.origin !== undefined && !validPoint(v.origin)) fail();
+    if (v.settlement !== undefined && !s.buildings.some(b => b.id === v.settlement && ['camp', 'outpost', 'townhall'].includes(b.kind) && b.complete)) fail();
+    if (v.home !== undefined && !s.buildings.some(b => b.id === v.home && homeCapacity(b) > 0 && (isMerchant(v) ? b.kind === 'warehouse' : b.kind !== 'warehouse'))) fail();
+    if (isMerchant(v) && (v.job !== null || v.mining || (v.task && !['haul', 'return'].includes(v.task.kind)))) fail();
     peopleIds.add(v.id);
-    if (v.cargo && (!RESOURCES.includes(v.cargo.resource) || !integer(v.cargo.amount) || v.cargo.amount < 1 || v.cargo.amount > 2)) fail();
+    if (v.cargo && (!RESOURCES.includes(v.cargo.resource) || !integer(v.cargo.amount) || v.cargo.amount < 1 || v.cargo.amount > (isMerchant(v) ? vehicleCapacity(v.task?.vehicle) : 2))) fail();
     if (v.task) {
       const t = v.task;
-      if (!['haul', 'gather', 'saw', 'craft', 'excavate'].includes(t.kind) || !['pickup', 'work', 'drop'].includes(t.phase) || !ids.has(t.destId) || (t.sourceId !== undefined && !ids.has(t.sourceId)) || !RESOURCES.includes(t.resource) || !integer(t.amount) || t.amount < 1 || t.amount > 2 || !finite(t.timer) || t.timer < 0 || !Array.isArray(t.path) || t.path.length > s.tiles.length || !t.path.every(p => validPoint(p)) || (['gather', 'excavate'].includes(t.kind) && !validPoint(t.node!)) || (t.kind === 'excavate' && (!integer(t.layer) || t.layer! < 1 || t.layer! > 3 || !['stone', 'coal'].includes(t.resource))) || (t.phase === 'pickup' && t.sourceId === undefined)) fail();
+      if (!['return', 'haul', 'gather', 'saw', 'craft', 'excavate'].includes(t.kind) || !['pickup', 'work', 'drop'].includes(t.phase) || !ids.has(t.destId) || (t.sourceId !== undefined && !ids.has(t.sourceId)) || !RESOURCES.includes(t.resource) || !integer(t.amount) || t.amount < 1 || t.amount > (isMerchant(v) && t.kind === 'haul' ? vehicleCapacity(t.vehicle) : 2) || !finite(t.timer) || t.timer < 0 || !Array.isArray(t.path) || t.path.length > s.tiles.length || !t.path.every(p => validPoint(p)) || (['gather', 'excavate'].includes(t.kind) && !validPoint(t.node!)) || (t.kind === 'excavate' && (!integer(t.layer) || t.layer! < 1 || t.layer! > 3 || !['stone', 'coal'].includes(t.resource))) || (t.phase === 'pickup' && t.sourceId === undefined)) fail();
+      if (t.vehicle !== undefined && (!isMerchant(v) || !merchantHome(s, v) || !['cart', 'coach'].includes(t.vehicle) || s.level < (t.vehicle === 'coach' ? 4 : 3))) fail();
+      if (t.kind === 'return' && (!isMerchant(v) || t.destId !== v.home || t.phase !== 'drop' || v.cargo)) fail();
       if (t.kind === 'excavate') {
         const node = tileAt(s, t.node!.x, t.node!.z), pit = node.excavation;
         if (!pit || t.phase === 'pickup' || t.resource !== pitResource(s.seed, node.x, node.z, t.layer!) || (t.phase === 'work' && (t.layer !== pit.depth + 1 || !pit.remaining))) fail();
@@ -532,7 +596,8 @@ export function deserialize(raw: string): GameState {
   }
   if (!s.milestones.every(k => Object.hasOwn(DEFINITIONS, k)) || s.events.length > 30 || !s.events.every(e => finite(e.time) && typeof e.message === 'string' && e.message.length < 500)) fail();
   if (new Set(s.tiles.map(t => key(t.x, t.z))).size !== s.tiles.length) fail();
-  if (s.buildings.some(b => b.kind === 'miningHouse' && s.villagers.filter(v => v.home === b.id).length > 4)) fail();
+  if (s.buildings.some(b => homeCapacity(b) && s.villagers.filter(v => v.home === b.id).length > homeCapacity(b))) fail();
+  for (const home of s.buildings.filter(b => b.kind === 'warehouse')) for (const vehicle of ['cart', 'coach']) if (s.villagers.filter(v => v.home === home.id && v.task?.vehicle === vehicle).length > 1) fail();
   validateUnderground(s);
   if (legacy) {
     if (s.economyVersion === 1 && s.level === 5) s.level = 4;
@@ -559,6 +624,25 @@ export function deserialize(raw: string): GameState {
   }
   if (s.economyVersion !== 2 || (s.returns && !validStock(s.returns))) fail();
   if (s.economy && (!finite(s.economy.startedAt) || s.economy.startedAt > s.time || !Array.isArray(s.economy.buckets) || s.economy.buckets.length > 32 || s.economy.buckets.some(b => !finite(b.at) || b.at > s.time || !validStock(b.produced) || !validStock(b.consumed)))) fail();
+  if (s.logisticsVersion !== undefined && s.logisticsVersion !== 1) fail();
+  if (!s.logisticsVersion) {
+    for (const v of s.villagers) {
+      bindHome(s, v, s.buildings.find(b => b.id === v.home));
+      if (!v.depth) {
+        returnCargo(s, v); v.mining = null; v.job = null;
+        const center = s.buildings.find(b => b.id === v.settlement);
+        if (!inLocalArea(s, v, v) && center) { v.x = center.x; v.z = center.z; }
+      }
+    }
+    syncResidents(s);
+    for (const v of s.villagers.filter(v => !isMerchant(v) && !v.depth)) if (!inLocalArea(s, v, v)) {
+      const home = s.buildings.find(b => b.id === v.home), center = s.buildings.find(b => b.id === v.settlement);
+      const target = home && inLocalArea(s, v, home) ? home : center;
+      if (target) { v.x = target.x; v.z = target.z; }
+    }
+    s.logisticsVersion = 1;
+    event(s, 'Heimatorte und Händler eingerichtet. Waren bleiben erhalten; lokale Aufträge werden neu geplant.');
+  }
   return s;
 }
 
@@ -593,12 +677,41 @@ export function worldBounds(s: GameState) {
   const regions = s.regions.map(id => regionInfo(s, id)), minX = Math.min(...regions.map(r => r.x)), minZ = Math.min(...regions.map(r => r.z));
   return { minX, minZ, width: Math.max(...regions.map(r => r.x + CHUNK_W)) - minX, height: Math.max(...regions.map(r => r.z + CHUNK_H)) - minZ };
 }
-export function populationCap(s: GameState) { return ERAS[s.level - 1].cap; }
+export function populationCap(s: GameState) { return ERAS[s.level - 1].cap + s.buildings.filter(b => b.kind === 'warehouse' && b.complete).length * 4; }
 export function workerTarget(b: Building) { return b.kind === 'mine' ? b.mineWorkers ?? 1 : 1; }
-export function housingCapacity(s: GameState) { return Math.min(populationCap(s), s.buildings.filter(b => b.complete).reduce((n, b) => n + (b.kind === 'camp' ? 10 : b.kind === 'house' ? 2 : b.kind === 'miningHouse' ? 4 : 0), 0)); }
+export function housingCapacity(s: GameState) {
+  const local = s.buildings.filter(b => b.kind !== 'warehouse').reduce((n, b) => n + homeCapacity(b), 0);
+  return Math.min(ERAS[s.level - 1].cap, local) + s.buildings.filter(b => b.kind === 'warehouse' && b.complete).length * 4;
+}
+export function syncResidents(s: GameState) {
+  const homes = s.buildings.filter(b => homeCapacity(b) && b.kind !== 'warehouse');
+  for (const v of s.villagers.filter(v => !isMerchant(v))) {
+    if (!v.origin) bindHome(s, v, s.buildings.find(b => b.id === v.home));
+    const homeBuilding = s.buildings.find(b => b.id === v.home), center = homeBuilding && nearestCenter(s, homeBuilding);
+    if (center && v.settlement !== center.id && !v.task && !v.mining && Math.max(Math.abs(v.x - center.x), Math.abs(v.z - center.z)) <= LOCAL_RADIUS) bindHome(s, v, homeBuilding);
+    if (!v.home) {
+      const home = homes.filter(b => {
+        const center = nearestCenter(s, b) ?? b;
+        return Math.max(Math.abs(v.x - center.x), Math.abs(v.z - center.z)) <= LOCAL_RADIUS && s.villagers.filter(n => n.home === b.id).length < homeCapacity(b);
+      })
+        .sort((a, b) => distance(v, a) - distance(v, b))[0];
+      if (home) bindHome(s, v, home);
+    }
+  }
+  for (const home of s.buildings.filter(b => b.kind === 'warehouse' && b.complete)) {
+    while (s.villagers.filter(v => isMerchant(v) && v.home === home.id).length < 4) {
+      const displaced = s.villagers.find(v => isMerchant(v) && !merchantHome(s, v) && !v.task);
+      if (displaced) { bindHome(s, displaced, home); displaced.x = home.x; displaced.z = home.z; }
+      else addVillager(s, home, true);
+    }
+  }
+}
 function welcomeResidents(s: GameState) {
-  while (s.villagers.length < housingCapacity(s)) {
-    const home = s.buildings.find(b => b.complete && b.kind === 'miningHouse' && s.villagers.filter(v => v.home === b.id).length < 4);
+  const localHomes = s.buildings.filter(b => homeCapacity(b) && b.kind !== 'warehouse');
+  const limit = Math.min(ERAS[s.level - 1].cap, localHomes.reduce((n, b) => n + homeCapacity(b), 0));
+  while (s.villagers.filter(v => !isMerchant(v)).length < limit) {
+    const home = localHomes.find(b => s.villagers.filter(v => v.home === b.id).length < homeCapacity(b));
+    if (!home) break;
     addVillager(s, home);
   }
 }
@@ -658,7 +771,7 @@ export function civilisationProgress(s: GameState): { requirements: Requirement[
 export function advanceCivilisation(s: GameState) {
   const progress = civilisationProgress(s);
   if (!progress.ready) return { ok: false, reason: s.level === 5 ? 'Die höchste Stufe ist erreicht.' : 'Erfülle zuerst alle Ziele und sammle die Aufstiegskosten.' };
-  spend(s, progress.cost); s.level++; welcomeResidents(s); s.revision++;
+  spend(s, progress.cost); s.level++; syncResidents(s); welcomeResidents(s); s.revision++;
   event(s, `Neue Zivilisationsstufe: ${ERAS[s.level - 1].name}! ${ERAS[s.level - 1].unlocks}.`);
   return { ok: true, reason: `Willkommen in der Stufe ${ERAS[s.level - 1].name}!` };
 }

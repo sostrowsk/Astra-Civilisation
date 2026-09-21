@@ -163,3 +163,12 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Browserprüfung bei 1280×720 mit vergrößerter Kamera: Holzfäller mit Axt in unterschiedlichen Schlagphasen, Steinbrucharbeiter am Felsen, Tagebauarbeiter mit nach unten schlagender Spitzhacke. Arbeiter richten sich zum Ziel aus; Spielpause hält die Pose an.
 - Arbeitswerkzeug und Splitter sind an Arbeitsphase, leeren Transportweg und fehlende Ladung gebunden. Die Positionskorrektur am Vorkommen betrifft ausschließlich die Darstellung.
 - 89 bestehende Tests erfolgreich; TypeScript und Produktionsbuild erfolgreich. Bestehender Hinweis zur Bundlegröße unverändert.
+
+
+## Lokale Siedlungen, Händler und Fuhrpark (21.09.2026)
+
+- 100 Tests erfolgreich, elf davon für die neue Logistik: vier Händler je Lagerhaus, keine Produktionszuweisung, lokale Weggrenzen auch bei Umwegen, entfernte Baustellen nur mit Händlern, Import für entfernte Betriebe, Ladungen von 2/8/16, Reservierungen ohne Überfüllung, getrennte Transporte bei überlappenden Ortsbereichen, Migration und deterministisches Laden, Abriss mit voller Kutsche sowie Wiederverwendung heimatloser Händler.
+- Pro Lagerhaus höchstens ein Karren und eine Kutsche; Reservierung bleibt bis zum Ende der Rückfahrt erhalten. Doppelte Fahrzeugreservierungen werden beim Laden abgelehnt.
+- Reproduzierbare Browser-Testwelt: `node --experimental-strip-types scripts/create-trade-fixture.ts`, danach `/?sandbox&scenario=trade`. Die finanzierte Szene nutzt echte Transportaufträge statt eingefrorener Fahrzeugposen.
+- Browserprüfung bei 1280×720: ein Pferdekarren und eine gedeckte Kutsche sichtbar; Lagerhaus 10/12 zeigt vier Händler, davon zwei zu Fuß, und je ein belegtes Fahrzeug. Wirtschaftsübersicht trennt zehn örtliche Träger von vier Händlern. Die reguläre Partie wurde nicht verwendet.
+- Produktionsbuild und `git diff --check` erfolgreich; bestehender Hinweis zur Bundlegröße unverändert.

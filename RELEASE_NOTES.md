@@ -1,5 +1,14 @@
 # Release Notes
 
+## 21. September 2026 · Lokale Siedlungen, Händler und Fuhrpark
+
+- Normale Bewohner bleiben im Bereich von neun Feldern je Richtung um ihren Heimatort. Arbeitswege und Umwege beachten die Grenze; Transporte zwischen Orten übernehmen ausschließlich Händler.
+- Jedes Lagerhaus erhält vier eigene Händler und vier zusätzliche Wohnplätze. Händler werden nicht für Produktion oder Bergbau eingesetzt. Entfernte Baustellen, Betriebe und Lager werden automatisch versorgt.
+- Zu Fuß: zwei Waren. Ab Viehzucht: ein Pferdekarren mit acht Waren je Lagerhaus. Ab Kleinstadt: zusätzlich eine Kutsche mit 16 Waren. Höchstens ein Fahrzeug jeder Art pro Lagerhaus; bis zur Rückkehr am Heimatlager belegt.
+- Eigene Voxelmodelle für Pferdekarren und Kutsche mit bewegten Rädern und Pferdebeinen. Lagerfenster zeigen Händler, Ladungen und Fahrzeugbelegung; das Wirtschafts-Dashboard weist Händler getrennt aus.
+- Bestehende Spielstände werden um Wohnorte und Händler ergänzt. Abriss und Baustellenabbruch erhalten Ladungen; Händler aus abgerissenen Lagern werden bei Neubauten wieder eingesetzt.
+- 100 Tests erfolgreich, einschließlich lokaler Wege, getrennter Siedlungen, Ladungsgrößen, Fuhrparkreservierungen, Rückfahrten, Migration und Abriss. Browserprüfung von Fahrzeugen, vier Lagerhändlern und Wirtschaftsübersicht; TypeScript und Produktionsbuild erfolgreich.
+
 ## 21. September 2026 · Holzfäller und Steinbrucharbeiter animiert
 
 - Holzfäller holen sichtbar mit einer Axt aus und schlagen zum Baum hin; Steinbrucharbeiter verwenden eine Spitzhacke. Auch im Tagebau wird nach unten geschlagen.

@@ -1,6 +1,7 @@
+import { workerPath } from './logistics.ts';
 import { capacity, roomFor, recordFlow, useEquipment } from './economy.ts';
 import { key, hash, noise, regionFor } from './generator.ts';
-import { NAMES, findPath, tileAt, event, type GameState, type Point, type Building, type Villager, type Resource } from './sim.ts';
+import { NAMES, tileAt, event, type GameState, type Point, type Building, type Villager, type Resource } from './sim.ts';
 export const DEPTHS = [0, 12, 32, 64] as const;
 export const ORES = ['coal', 'copperOre', 'ironOre', 'goldOre', 'diamond'] as const;
 export type Ore = typeof ORES[number];
@@ -109,7 +110,7 @@ export function assignMiner(s: GameState, v: Villager, b: Building) {
   const assigned = new Set(s.villagers.filter(n => n.mining?.depth === depth).map(n => key(n.mining!.target.x, n.mining!.target.z)));
   const candidates = s.underground.filter(t => t.depth === depth && t.solid && t.revealed && !assigned.has(key(t.x, t.z)) && (t.order === b.id || (t.order === null && b.autoMine && dist(t, b) <= 18)))
     .sort((a, c) => Number(c.order === b.id) - Number(a.order === b.id) || Number(!!c.ore) - Number(!!a.ore) || dist(a, b) - dist(c, b));
-  const approach = findPath(s, v, b); if (!approach) return;
+  const approach = workerPath(s, v, b); if (!approach) return;
   for (const target of candidates) {
     if (roomFor(s, b, target.ore ?? 'stone') < Math.min(2, target.amount)) continue;
     const routes = neighbors(target).map(p => undergroundPath(s, b, p, depth)).filter((p): p is Point[] => p !== null).sort((a, c) => a.length - c.length);

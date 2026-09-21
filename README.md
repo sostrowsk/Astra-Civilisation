@@ -77,7 +77,7 @@ Metall und Forschungsrohstoff werden im jeweiligen Gebäude eingestellt, sobald 
 
 Über **Bewohnerlabels** kannst du Namen und Tätigkeiten für **Oberfläche** und **Unter Tage** getrennt ein- und ausblenden. Die Einstellung bleibt in diesem Browser für alle Partien gespeichert. Standardmäßig sind beide ausgeschaltet.
 
-Fünf Stufen in fester Reihenfolge: **Pionierlager → Dorf → Viehzucht → Kleinstadt → Manufaktur**. Bevölkerungsgrenzen: **20 / 32 / 48 / 96 / 128**. Wohnhäuser bieten zwei Plätze, Bergmannshäuser vier.
+Fünf Stufen in fester Reihenfolge: **Pionierlager → Dorf → Viehzucht → Kleinstadt → Manufaktur**. Bevölkerungsgrenzen: **20 / 32 / 48 / 96 / 128**. Wohnhäuser bieten zwei Plätze, Bergmannshäuser vier. Jedes Lagerhaus ergänzt vier eigene Händlerplätze zusätzlich zur normalen Bevölkerungsgrenze.
 
 Schafzucht, Weberei und Schneiderei werden gemeinsam auf Stufe Viehzucht freigeschaltet. Die Kleinstadt und später die Manufaktur benötigen Kleidung. Die Manufaktur verarbeitet Kupfer und Eisen zu Draht, Zahnrädern und Maschinenteilen. Ziele und Aufstiegskosten stehen im Entwicklungsfenster.
 
@@ -88,6 +88,22 @@ Scheren halten 20 Kleidungsstücke; Bohrer beschleunigen 40 Abbauzyklen um 50 %.
 Lagerstandorte fassen **100 je Rohstoff**, Produktionsbetriebe meist **10 je Eingang und 20 je Ausgang**, Minen **40 je Fördergut** und **2 Bohrer**. Gemischte Ein-/Ausgänge der Manufaktur fassen 20, Ausrüstungspuffer 2. Wohnhäuser besitzen kein Warenlager. Reservierungen verhindern Überfüllung durch gleichzeitige Lieferungen. Volle Ausgänge stoppen neue Produktion; Träger suchen Lager mit Platz. Baustellenmaterial liegt separat bereit; Rückgaben warten bei vollen Lagern in einer im Dashboard sichtbaren Rückgabemenge.
 
 Jeder Betrieb hat die **Betriebspriorität Niedrig / Normal / Hoch**. Bei gleicher Priorität wird zunächst eine Stelle pro Betrieb besetzt, danach weitere Minenstellen. Höhere Priorität kann Arbeiter übernehmen, sobald sie ihre aktuelle Lieferung oder Arbeit beendet haben. Zwei Träger bleiben frei. Die Statusanzeige unterscheidet Personalmangel, laufende Lieferungen, volle Ausgänge und fehlende Zutaten.
+
+### Heimatorte und Händler
+
+Normale Bewohner arbeiten und tragen Waren innerhalb von **9 Feldern je Richtung** um ihren Heimatort (Gründungslager, Außenposten oder Rathaus). Auch Umwege bleiben in diesem Bereich. Wohnhäuser gehören zum nächstgelegenen Ort; entfernte Betriebe benötigen lokale Wohnhäuser. Waren dürfen nur Händler zwischen verschiedenen Orten transportieren, auch wenn sich deren Bereiche überschneiden.
+
+Jedes fertige **Lagerhaus beherbergt genau vier Händler**. Gründungslager, Außenposten und Rathäuser erhalten keine eigenen Händler. Händler übernehmen keine Produktionsstellen. Sie versorgen zuerst Baustellen, danach Zutaten und Ausrüstung der Betriebe und gleichen anschließend Lagerbestände zwischen Orten aus. Für eine neue entfernte Siedlung zuerst ein Lagerhaus im bestehenden Ort bauen; dessen Händler können den entfernten Außenposten und neue Wohnhäuser versorgen.
+
+| Stufe | Fuhrpark je Lagerhaus | Ladung je Händler |
+|---|---|---|
+| Pionierlager / Dorf | Zu Fuß | 2 Waren |
+| Viehzucht | Höchstens 1 Pferdekarren | 8 Waren im Karren, sonst 2 |
+| Kleinstadt / Manufaktur | Höchstens 1 Pferdekarren und 1 Kutsche | 8 im Karren, 16 in der Kutsche, sonst 2 |
+
+Fahrzeuge werden beim Stufenaufstieg automatisch verfügbar. Sie werden am Heimatlager übernommen und bleiben bis zur Rückkehr belegt. Karren und Kutsche können gleichzeitig unterwegs sein; die übrigen Händler laufen. Lagerfenster zeigen alle vier Händler, ihre Ladungen und die Fahrzeugbelegung. Die Wirtschaftsübersicht trennt Händler von örtlichen Trägern.
+
+Beim Lagerabriss bleiben Händler und Waren erhalten. Händler ohne Lager warten auf einen neuen Lagerstandort und werden beim Neubau wieder eingesetzt. Bestehende Spielstände werden beim Laden einmalig um Heimatorte und Händler ergänzt; mitgeführte Waren bleiben erhalten, lokale Aufträge werden neu geplant.
 
 ### Wirtschaftsdashboard
 

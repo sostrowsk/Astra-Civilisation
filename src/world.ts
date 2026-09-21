@@ -1,3 +1,4 @@
+import { isMerchant } from './logistics.ts';
 import { surfaceHeight, treeGrowthStage, pitResource } from './surface.ts';
 import { undergroundAt, ORE_COLORS } from './mining.ts';
 import * as THREE from 'three';
@@ -29,6 +30,33 @@ function crate(g: THREE.Group, x: number, y: number, z: number, size = .32) {
 function flag(g: THREE.Group, color = '#d6b46d', y = 1.25) {
   box(g, WOOD, .52, y, -.45, .06, y * 2, .06);
   box(g, color, .75, y * 2 - .2, -.45, .45, .3, .035);
+}
+function merchantCart(covered: boolean) {
+  const g = new THREE.Group(), wheels: THREE.Group[] = [], horseLegs: THREE.Mesh[] = [];
+  // Block-built horse, harness and cargo wagon; both vehicles share the same footprint.
+  box(g, '#95694b', 0, .5, .85, .34, .37, .7);
+  box(g, '#95694b', 0, .77, 1.12, .25, .5, .25);
+  box(g, '#b1845b', 0, .92, 1.26, .25, .22, .36);
+  box(g, '#453c32', 0, .89, 1.02, .13, .3, .14);
+  for (const x of [-.13, .13]) for (const z of [.6, 1.06]) horseLegs.push(box(g, '#694b38', x, .19, z, .09, .4, .1));
+  for (const x of [-.24, .24]) box(g, WOOD, x, .35, .25, .045, .055, 1.15);
+  box(g, LIGHTWOOD, 0, .32, -.42, .85, .12, 1.1);
+  for (const x of [-.43, .43]) box(g, WOOD, x, .51, -.48, .065, .3, 1);
+  box(g, WOOD, 0, .5, -.98, .85, .3, .06);
+  if (covered) {
+    box(g, '#d9cba3', 0, .84, -.56, .83, .65, .8);
+    box(g, '#446352', 0, 1.2, -.56, .97, .12, .96);
+    for (const x of [-.43, .43]) box(g, '#4e5b57', x, .9, -.55, .025, .22, .35);
+  }
+  for (const x of [-.49, .49]) for (const z of (covered ? [-.78, -.12] : [-.5])) {
+    const wheel = new THREE.Group(); wheel.position.set(x, .23, z);
+    box(wheel, '#554639', 0, 0, 0, .09, .44, .44);
+    box(wheel, LIGHTWOOD, x < 0 ? -.055 : .055, 0, 0, .025, .32, .045);
+    g.add(wheel); wheels.push(wheel);
+  }
+  const load = new THREE.Group(); crate(load, -.19, .38, -.55, .3); crate(load, .18, .38, -.55, .3); g.add(load);
+  g.userData.load = load; g.userData.wheels = wheels; g.userData.horseLegs = horseLegs;
+  return g;
 }
 export function buildingModel(kind: BuildingKind) {
   const g = new THREE.Group();
@@ -431,7 +459,7 @@ export class World {
       let g = this.personMeshes.get(v.id);
       if (!g) {
         g = new THREE.Group(); g.rotation.order = 'YXZ';
-        box(g, ['#bd754c', '#6a8494', '#dac38a', '#799372', '#986b6c'][v.id % 5], 0, .32, 0, .24, .28, .18);
+        box(g, isMerchant(v) ? '#b58a44' : ['#bd754c', '#6a8494', '#dac38a', '#799372', '#986b6c'][v.id % 5], 0, .32, 0, .24, .28, .18);
         box(g, '#e4b590', 0, .57, 0, .21, .22, .2);
         box(g, '#634734', 0, .68, -.02, .23, .08, .22);
         const legs = new THREE.Group();
@@ -459,6 +487,7 @@ export class World {
         const chips = new THREE.Group();
         for (let i = 0; i < 4; i++) box(chips, LIGHTWOOD, 0, 0, 0, .055, .055, .09);
         g.add(chips); g.userData.chips = chips;
+
         const label = document.createElement('div'); label.className = 'mine-worker-label'; label.hidden = true; this.container.appendChild(label); this.workerLabels.set(v.id, label);
         const cargo = box(g, LIGHTWOOD, 0, .3, .22, .27, .24, .2); g.userData.cargo = cargo;
         this.people.add(g); this.personMeshes.set(v.id, g);
@@ -468,6 +497,14 @@ export class World {
       const miner = !!v.mining || s.buildings.some(b => b.id === v.job && b.kind === 'mine');
       (g.userData.helmet as THREE.Group).visible = miner;
       const walking = !!(v.task?.path.length || v.mining?.path.length);
+      const trading = isMerchant(v), driving = trading && !!v.task?.vehicle;
+      if (trading && !g.userData.cart) { const cart = merchantCart(false), coach = merchantCart(true); g.add(cart, coach); g.userData.cart = cart; g.userData.coach = coach; }
+      for (const [name, shown] of [['cart', driving && v.task?.vehicle === 'cart'], ['coach', driving && v.task?.vehicle === 'coach']] as const) {
+        const vehicle = g.userData[name] as THREE.Group | undefined; if (!vehicle) continue; vehicle.visible = shown;
+        (vehicle.userData.load as THREE.Group).visible = !!v.cargo;
+        for (const wheel of vehicle.userData.wheels as THREE.Group[]) wheel.rotation.x = walking ? s.time * 7 : wheel.rotation.x;
+        (vehicle.userData.horseLegs as THREE.Mesh[]).forEach((leg, i) => leg.rotation.x = walking ? Math.sin(s.time * 10 + i * Math.PI) * .35 : 0);
+      }
       // Work starts only at the resource; carrying and approach paths keep their walking pose.
       const working = !v.depth && !walking && !v.cargo && v.task?.phase === 'work' && (v.task.kind === 'gather' || v.task.kind === 'excavate');
       const chopping = working && v.task?.resource === 'wood';
@@ -493,6 +530,8 @@ export class World {
       }
       g.rotation.y = target && (target.x !== v.x || target.z !== v.z) ? Math.atan2(target.x - v.x, target.z - v.z) : v.facing;
       g.rotation.x = working ? .08 + strike * .12 : 0;
+      if (trading) { const lane = v.task?.vehicle === 'coach' ? .55 : v.task?.vehicle === 'cart' ? -.55 : 0; g.position.x += Math.cos(g.rotation.y) * lane; g.position.z -= Math.sin(g.rotation.y) * lane; }
+      if (driving) arms.forEach(arm => arm.rotation.x = -.65);
       if (target && !digging) {
         // Lean into the adjacent resource visually without changing the worker's route.
         g.position.x += Math.sin(g.rotation.y) * .65;
@@ -511,17 +550,17 @@ export class World {
       const projected = new THREE.Vector3(g.position.x, g.position.y + 1.3, g.position.z).project(this.camera);
       label.hidden = !(this.depth ? this.labelVisibility.underground : this.labelVisibility.surface) || !g.visible || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;
       if (!label.hidden) {
-        label.textContent = `${v.name} · ${v.cargo ? 'trägt ' + v.cargo.amount : walking ? 'unterwegs' : v.mining?.stage === 'work' || v.task?.kind === 'excavate' ? 'gräbt' : v.task?.kind === 'gather' ? v.task.resource === 'wood' ? 'fällt Holz' : 'baut Stein ab' : v.task ? 'arbeitet' : 'wartet'}`;
+        label.textContent = `${v.name}${trading ? ' · Händler · ' + (v.task?.vehicle === 'coach' ? 'Kutsche' : v.task?.vehicle === 'cart' ? 'Pferdekarren' : 'zu Fuß') : ''} · ${v.cargo ? 'trägt ' + v.cargo.amount : walking ? 'unterwegs' : v.mining?.stage === 'work' || v.task?.kind === 'excavate' ? 'gräbt' : v.task?.kind === 'gather' ? v.task.resource === 'wood' ? 'fällt Holz' : 'baut Stein ab' : v.task ? 'arbeitet' : 'wartet'}`;
         const x = (projected.x + 1) / 2 * this.container.clientWidth;
         let y = (1 - projected.y) / 2 * this.container.clientHeight;
         while (labelPositions.some(p => Math.abs(p.x - x) < 130 && Math.abs(p.y - y) < 25)) y -= 25;
         labelPositions.push({ x, y }); label.style.left = `${x}px`; label.style.top = `${y}px`;
       }
-      const legs = g.userData.legs as THREE.Group;
+      const legs = g.userData.legs as THREE.Group; legs.visible = !driving;
       legs.children[0].rotation.x = walking ? Math.sin(s.time * 9 + v.id) * .5 : 0;
       legs.children[1].rotation.x = -legs.children[0].rotation.x;
       const cargo = g.userData.cargo as THREE.Mesh;
-      cargo.visible = !!v.cargo;
+      cargo.visible = !!v.cargo && !driving;
       if (v.cargo) cargo.material = material(v.cargo.resource === 'stone' ? '#98a6a4' : v.cargo.resource === 'planks' ? '#dbb375' : v.cargo.resource === 'food' ? '#c5a249' : v.cargo.resource === 'tools' ? '#718993' : v.cargo.resource === 'knowledge' ? '#899bbb' : '#89603e');
     }
     for (const [id, g] of this.personMeshes) if (!s.villagers.some(v => v.id === id)) { this.people.remove(g); this.personMeshes.delete(id); this.workerLabels.get(id)?.remove(); this.workerLabels.delete(id); }

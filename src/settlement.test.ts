@@ -41,7 +41,7 @@ test('mining-house residents get nearby mine vacancies while every business rece
   near.mineWorkers = 4; far.mineWorkers = 4;
   const home = build(s, 'miningHouse', 10, 10);
   assert.ok(s.villagers.some(v => v.home === home.id && v.job === near.id));
-  assert.ok(s.villagers.some(v => v.job === far.id));
+  assert.ok(!s.villagers.some(v => v.job === far.id), 'distant mine needs a local settlement and residents');
   assert.ok(s.villagers.some(v => v.job === logger.id));
   assert.ok(s.villagers.filter(v => v.job === null).length >= 2);
 });
@@ -102,7 +102,7 @@ test('residents move to a higher-priority nearby mine after finishing work', () 
   const resident = s.villagers.find(v => v.home === home.id)!;
   resident.job = logger.id; resident.task = { kind: 'haul', phase: 'drop', destId: 1, resource: 'wood', amount: 1, path: [], timer: 2 };
   // Other residents are busy carrying, leaving a vacancy until the miner's job ends.
-  for (const v of s.villagers.filter(v => !v.home)) { v.job = null; v.task = { kind: 'haul', phase: 'drop', destId: 1, resource: 'wood', amount: 1, path: [], timer: 10 }; }
+  for (const v of s.villagers.filter(v => v.home !== home.id)) { v.job = null; v.task = { kind: 'haul', phase: 'drop', destId: 1, resource: 'wood', amount: 1, path: [], timer: 10 }; }
   const mine = build(s, 'mine', 11, 10); mine.autoMine = false; mine.mineWorkers = 4; mine.priority = 2;
   step(s, .1); assert.equal(resident.job, logger.id, 'current work finishes first');
   run(s, 4); assert.equal(resident.job, mine.id);

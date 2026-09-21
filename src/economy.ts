@@ -1,3 +1,4 @@
+import { isMerchant } from './logistics.ts';
 import { undergroundAt } from './mining.ts';
 import { RESOURCES, emptyStock, recipeFor, DEFINITIONS, workerTarget, isStorage, stock, civilisationProgress, type GameState, type Building, type Resource, type Stock } from './sim.ts';
 export interface EconomyBucket { at: number; produced: Stock; consumed: Stock }
@@ -18,7 +19,7 @@ export function inbound(s: GameState, b: Building, r: Resource, excludeWorker?: 
       const target = undergroundAt(s, v.mining.target.x, v.mining.target.z, v.mining.depth);
       if ((v.cargo?.resource ?? target?.ore ?? 'stone') === r) n += v.cargo?.amount ?? 2;
     }
-    if (v.task?.destId !== b.id) return n;
+    if (v.task?.destId !== b.id || v.task.kind === 'return') return n;
     if (v.task.kind === 'craft' || v.task.kind === 'saw') { const recipe = recipeFor(s, b); if (recipe?.output === r) n += recipe.count; }
     else if (v.task.resource === r) n += v.task.amount;
     return n;
@@ -46,7 +47,7 @@ export function useEquipment(s: GameState, b: Building) {
 export function staffingSummary(s: GameState) {
   const jobs = s.buildings.filter(b => b.complete && b.active && DEFINITIONS[b.kind].producer).reduce((n, b) => n + workerTarget(b), 0);
   const assigned = s.villagers.filter(v => v.job !== null).length;
-  return { residents: s.villagers.length, jobs, assigned, carriers: s.villagers.length - assigned, vacancies: Math.max(0, jobs - assigned) };
+  return { residents: s.villagers.length, jobs, assigned, merchants: s.villagers.filter(isMerchant).length, carriers: s.villagers.filter(v => !isMerchant(v) && v.job === null).length, vacancies: Math.max(0, jobs - assigned) };
 }
 export function economyRows(s: GameState) {
   const totals = stock(s), history = s.economy, goalCost = civilisationProgress(s).cost;
