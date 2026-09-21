@@ -207,3 +207,9 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Kleine Startwelt: Radius 11,5 statt 30; nach acht Expeditionen wächst er automatisch auf 30. Die zwischengespeicherte Grenzberechnung wird bei Erweiterung neu aufgebaut.
 - Browserprüfung in isolierter Welt mit 25 Regionen: wiederholtes Ziehen über den Kartenrand in beide Richtungen, vollständig gefüllter Ausschnitt auch herausgezoomt. Kleine Bergbauwelt: Begrenzung und gefüllter Sichtkreis unter Tage bestätigt. Keine Konsolenfehler.
 - TypeScript, Produktionsbuild und `git diff --check` erfolgreich. Bestehender Bundlegrößenhinweis unverändert.
+
+## 21. September 2026 · Drei Pixel weicher Lichtsaum
+
+- 109 bestehende Tests erfolgreich; Fokusgrenzen und Weltdaten bleiben unverändert. TypeScript und Produktionsbuild erfolgreich.
+- Browserprüfung in isolierter 25-Regionen-Welt mit mehrfach verändertem Zoom und Ziehen bis zum Kartenrand: runder, abgedunkelt auslaufender Rand. Kleine Bergbauwelt unter Tage ebenfalls visuell geprüft. Keine Shader- oder Konsolenfehler.
+- Randbreite wird über Fragmentableitungen in Bildschirmpixeln bestimmt und mit der Pixeldichte skaliert. Ein kleiner zusätzlicher Geometriebereich deckt Randfelder und überhängende Modelle ab; die Simulation wird nicht erweitert.

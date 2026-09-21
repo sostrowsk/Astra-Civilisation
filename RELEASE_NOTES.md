@@ -1,5 +1,11 @@
 # Release Notes
 
+## 21. September 2026 · Weicher Lichtsaum am Sichtkreis
+
+- Der Sichtkreis erhält einen zusätzlichen, drei Bildschirmpixel breiten Rand: Gelände, Wasser, Gebäude und Bewohner werden nach außen dunkler und blenden weich aus, wie am Rand eines Taschenlampenkegels.
+- Die Breite bleibt beim Zoomen und auf Retina-Displays gleich. Ein dezenter Lichtsaum darf über die erkundete Kartengrenze hinauslaufen; die Fokusbegrenzung richtet sich weiterhin nach dem vollständig sichtbaren Kern.
+- Gilt an der Oberfläche und unter Tage. Keine schwebenden Schatten oder Bewohnerlabels außerhalb des Sichtbereichs. 109 Tests, Produktionsbuild und visuelle Browserprüfung erfolgreich.
+
 ## 21. September 2026 · Fokus innerhalb der erkundeten Welt
 
 - Der Kamerafokus hält ausreichend Abstand zu Kartenrändern, fehlenden Regionen und Ecken, damit der Sichtkreis vollständig auf erkundetem Gelände liegt. Die Begrenzung gilt für Maus, Tastatur, Übersichtskarte und Regionssprünge, auch unter Tage.

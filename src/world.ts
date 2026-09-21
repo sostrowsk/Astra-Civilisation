@@ -1,4 +1,5 @@
 import { VISIBILITY_RADIUS, constrainView, inViewRadius, visibleTiles } from './visibility.ts';
+import { VisibilityLight, VISIBILITY_FEATHER_PX } from './visibility-light.ts';
 import { isMerchant } from './logistics.ts';
 import { surfaceHeight, treeGrowthStage, pitResource } from './surface.ts';
 import { undergroundAt, ORE_COLORS } from './mining.ts';
@@ -11,9 +12,10 @@ const wx = (x: number) => (x - (ORIGINAL_WIDTH - 1) / 2) * UNIT;
 const wz = (z: number) => (z - (ORIGINAL_HEIGHT - 1) / 2) * UNIT;
 const geometry = new THREE.BoxGeometry(1, 1, 1);
 const materials = new Map<string, THREE.MeshLambertMaterial>();
+const visibilityLight = new VisibilityLight();
 function material(color: string) {
   let m = materials.get(color);
-  if (!m) { m = new THREE.MeshLambertMaterial({ color }); materials.set(color, m); }
+  if (!m) { m = new THREE.MeshLambertMaterial({ color }); visibilityLight.apply(m); materials.set(color, m); }
   return m;
 }
 function box(group: THREE.Group, color: string, x: number, y: number, z: number, w: number, h: number, d: number) {
@@ -242,6 +244,7 @@ export class World {
   revision = -1;
   viewFocus: Point = { x: 0, z: 0 };
   viewRadius = VISIBILITY_RADIUS;
+  renderRadius = VISIBILITY_RADIUS;
   depth = 0;
   keys = new Set<string>();
   selected: Point | null = null;
@@ -263,8 +266,9 @@ export class World {
     Object.assign(sun.shadow.camera, { left: -35, right: 35, top: 35, bottom: -35, near: 1, far: 90 });
     sun.shadow.normalBias = .12; sun.shadow.bias = .0001;
     sun.name = 'sun'; this.scene.add(sun); this.scene.add(sun.target);
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(10000, 10000), material('#b7cdc6'));
-    sea.name = 'backdrop'; sea.rotation.x = -Math.PI / 2; sea.position.y = -.55; sea.receiveShadow = true; this.scene.add(sea);
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(10000, 10000), new THREE.MeshLambertMaterial({ color: '#b7cdc6' }));
+    sea.name = 'backdrop'; sea.rotation.x = -Math.PI / 2; sea.position.y = -.55; this.scene.add(sea);
+    this.scene.add(visibilityLight.createHalo());
     this.scene.add(this.terrain, this.buildings, this.people, this.markers);
     this.preview = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: '#edf9ba', transparent: true, opacity: .42, depthWrite: false }));
     this.preview.visible = false; this.markers.add(this.preview);
@@ -347,7 +351,7 @@ export class World {
     for (const child of this.terrain.children) if (child instanceof THREE.InstancedMesh) child.dispose();
     this.terrain.clear(); this.tileTargets = [];
     if (this.depth) { this.rebuildUnderground(); return; }
-    const tiles = visibleTiles(s, this.viewFocus, this.viewRadius), land = tiles.filter(t => t.kind !== 'water');
+    const tiles = visibleTiles(s, this.viewFocus, this.renderRadius), land = tiles.filter(t => t.kind !== 'water');
     const sun = this.scene.getObjectByName('sun') as THREE.DirectionalLight;
     sun.target.position.set(wx(this.viewFocus.x), 0, wz(this.viewFocus.z));
     sun.position.copy(sun.target.position).add(new THREE.Vector3(-35, 65, 35));
@@ -417,7 +421,7 @@ export class World {
     waterMesh.receiveShadow = true; this.terrain.add(waterMesh);
     this.tileTargets.push(grass, waterMesh);
     this.buildings.clear(); this.buildingMeshes.clear();
-    for (const b of s.buildings.filter(b => inViewRadius(b, this.viewFocus, this.viewRadius))) {
+    for (const b of s.buildings.filter(b => inViewRadius(b, this.viewFocus, this.renderRadius))) {
       const model = buildingModel(b.kind);
       model.position.set(wx(b.x), b.kind === 'bridge' ? .42 : surfaceHeight(tileAt(s, b.x, b.z)), wz(b.z));
       const final = new THREE.Group();
@@ -432,13 +436,13 @@ export class World {
     this.revision = s.revision;
   }
   setDepth(depth: number) {
-    (this.scene.getObjectByName('backdrop') as THREE.Mesh).material = material(depth ? '#28333b' : '#b7cdc6');
+    ((this.scene.getObjectByName('backdrop') as THREE.Mesh).material as THREE.MeshLambertMaterial).color.set(depth ? '#28333b' : '#b7cdc6');
     this.depth = depth; this.revision = -1; this.selected = null; this.preview.visible = false;
     this.renderer.setClearColor(depth ? '#20282e' : '#cbd8ce');
     this.scene.fog = new THREE.Fog(depth ? '#20282e' : '#cbd8ce', 1000, 2400);
   }
   rebuildUnderground() {
-    const s = this.getState(), tiles = visibleTiles(s, this.viewFocus, this.viewRadius).flatMap(t => {
+    const s = this.getState(), tiles = visibleTiles(s, this.viewFocus, this.renderRadius).flatMap(t => {
       const cell = undergroundAt(s, t.x, t.z, this.depth); return cell ? [cell] : [];
     });
     const mesh = new THREE.InstancedMesh(geometry, material('#ffffff'), tiles.length), dummy = new THREE.Object3D();
@@ -453,7 +457,7 @@ export class World {
     ores.forEach((t, i) => { for (let j = 0; j < 3; j++) { dummy.position.set(wx(t.x) - .35 + j * .3, .94, wz(t.z) + (j % 2 ? .27 : -.2)); dummy.scale.set(.22, .16, .28); dummy.updateMatrix(); oreMesh.setMatrixAt(i * 3 + j, dummy.matrix); oreMesh.setColorAt(i * 3 + j, new THREE.Color(t.color)); } });
     mesh.receiveShadow = true; this.terrain.add(mesh, oreMesh); this.tileTargets.push(mesh);
     this.buildings.clear(); this.buildingMeshes.clear();
-    for (const b of s.buildings.filter(b => b.kind === 'mine' && b.complete && inViewRadius(b, this.viewFocus, this.viewRadius))) { const marker = buildingModel('mine'); marker.position.set(wx(b.x), .12, wz(b.z)); this.buildings.add(marker); }
+    for (const b of s.buildings.filter(b => b.kind === 'mine' && b.complete && inViewRadius(b, this.viewFocus, this.renderRadius))) { const marker = buildingModel('mine'); marker.position.set(wx(b.x), .12, wz(b.z)); this.buildings.add(marker); }
     this.revision = s.revision;
   }
   render(dt: number, time: number) {
@@ -471,13 +475,22 @@ export class World {
     this.controls.update();
     const requested = { x: this.controls.target.x / UNIT + (ORIGINAL_WIDTH - 1) / 2, z: this.controls.target.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2 };
     const {focus, radius} = constrainView(s, requested);
+    visibilityLight.uniforms.visibilityFocus.value.set(wx(focus.x), wz(focus.z));
+    visibilityLight.uniforms.visibilityRadius.value = radius * UNIT;
+    visibilityLight.uniforms.visibilityPixels.value = VISIBILITY_FEATHER_PX * this.renderer.getPixelRatio();
+    // Include whole tiles and overhanging models intersecting the feather. The
+    // shader trims them precisely; rounding avoids rebuilds on every zoom tick.
+    const height = Math.max(1, this.container.clientHeight);
+    const groundScale = Math.max(.01, Math.abs(this.camera.position.y - this.controls.target.y) / this.camera.position.distanceTo(this.controls.target));
+    const featherTiles = VISIBILITY_FEATHER_PX * (this.camera.top - this.camera.bottom) / (height * this.camera.zoom * groundScale * UNIT);
+    const renderRadius = radius + Math.ceil(featherTiles + 2);
     if (focus.x !== Math.round(requested.x) || focus.z !== Math.round(requested.z)) {
       // Move camera and target together, preserving zoom, rotation and viewing angle.
       const correction = new THREE.Vector3(wx(focus.x) - this.controls.target.x, 0, wz(focus.z) - this.controls.target.z);
       this.controls.target.add(correction); this.camera.position.add(correction);
     }
-    if (s.revision !== this.revision || radius !== this.viewRadius || focus.x !== this.viewFocus.x || focus.z !== this.viewFocus.z) {
-      this.viewFocus = focus; this.viewRadius = radius; this.rebuild();
+    if (s.revision !== this.revision || radius !== this.viewRadius || renderRadius !== this.renderRadius || focus.x !== this.viewFocus.x || focus.z !== this.viewFocus.z) {
+      this.viewFocus = focus; this.viewRadius = radius; this.renderRadius = renderRadius; this.rebuild();
     }
     if (this.preview.visible && !inViewRadius({x:this.preview.position.x / UNIT + (ORIGINAL_WIDTH - 1) / 2, z:this.preview.position.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2}, this.viewFocus, this.viewRadius)) this.preview.visible = false;
     for (const b of s.buildings) {
@@ -489,7 +502,7 @@ export class World {
     const labelPositions: { x: number; y: number }[] = [];
     for (const v of s.villagers) {
       let g = this.personMeshes.get(v.id);
-      if (v.depth !== this.depth || !inViewRadius(v, this.viewFocus, this.viewRadius)) {
+      if (v.depth !== this.depth || !inViewRadius(v, this.viewFocus, this.renderRadius)) {
         if (g) g.visible = false;
         const label = this.workerLabels.get(v.id); if (label) label.hidden = true;
         continue;
@@ -585,7 +598,7 @@ export class World {
       });
       const label = this.workerLabels.get(v.id)!;
       const projected = new THREE.Vector3(g.position.x, g.position.y + 1.3, g.position.z).project(this.camera);
-      label.hidden = !(this.depth ? this.labelVisibility.underground : this.labelVisibility.surface) || !g.visible || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;
+      label.hidden = !(this.depth ? this.labelVisibility.underground : this.labelVisibility.surface) || !g.visible || !inViewRadius(v, this.viewFocus, this.viewRadius) || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;
       if (!label.hidden) {
         label.textContent = `${v.name}${trading ? ' · Händler · ' + (v.task?.vehicle === 'coach' ? 'Kutsche' : v.task?.vehicle === 'cart' ? 'Pferdekarren' : 'zu Fuß') : ''} · ${v.cargo ? 'trägt ' + v.cargo.amount : walking ? 'unterwegs' : v.mining?.stage === 'work' || v.task?.kind === 'excavate' ? 'gräbt' : v.task?.kind === 'gather' ? v.task.resource === 'wood' ? 'fällt Holz' : 'baut Stein ab' : v.task ? 'arbeitet' : 'wartet'}`;
         const x = (projected.x + 1) / 2 * this.container.clientWidth;
