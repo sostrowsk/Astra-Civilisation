@@ -1,9 +1,10 @@
+import { VISIBILITY_RADIUS, inViewRadius, visibleTiles } from './visibility.ts';
 import { isMerchant } from './logistics.ts';
 import { surfaceHeight, treeGrowthStage, pitResource } from './surface.ts';
 import { undergroundAt, ORE_COLORS } from './mining.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ORIGINAL_WIDTH, ORIGINAL_HEIGHT, BIOMES, worldBounds, tileAt, buildingAt, placement, type GameState, type BuildingKind, type Point, type Tool } from './sim.ts';
+import { ORIGINAL_WIDTH, ORIGINAL_HEIGHT, BIOMES, tileAt, buildingAt, placement, type GameState, type BuildingKind, type Point, type Tool } from './sim.ts';
 
 const UNIT = 1.6;
 const wx = (x: number) => (x - (ORIGINAL_WIDTH - 1) / 2) * UNIT;
@@ -239,6 +240,7 @@ export class World {
   preview: THREE.Mesh;
   selection: THREE.Mesh;
   revision = -1;
+  viewFocus: Point = { x: 0, z: 0 };
   depth = 0;
   keys = new Set<string>();
   selected: Point | null = null;
@@ -327,10 +329,10 @@ export class World {
     if (!hits.length) return null;
     const p = hits[0].point;
     const x = Math.round(p.x / UNIT + (ORIGINAL_WIDTH - 1) / 2), z = Math.round(p.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2);
-    return tileAt(this.getState(), x, z) ? { x, z } : null;
+    return inViewRadius({x, z}, this.viewFocus) && tileAt(this.getState(), x, z) ? { x, z } : null;
   }
   hover(p: Point | null, tool: Tool | null) {
-    if (!p || !tool) { this.preview.visible = false; return; }
+    if (!p || !tool || !inViewRadius(p, this.viewFocus)) { this.preview.visible = false; return; }
     const s = this.getState(), check = placement(s, tool, p.x, p.z);
     const bridge = false;
     const x = p.x;
@@ -344,11 +346,11 @@ export class World {
     for (const child of this.terrain.children) if (child instanceof THREE.InstancedMesh) child.dispose();
     this.terrain.clear(); this.tileTargets = [];
     if (this.depth) { this.rebuildUnderground(); return; }
-    const land = s.tiles.filter(t => t.discovered && t.kind !== 'water');
-    const bounds = worldBounds(s), sun = this.scene.getObjectByName('sun') as THREE.DirectionalLight;
-    sun.target.position.set(wx(bounds.minX + bounds.width / 2), 0, wz(bounds.minZ + bounds.height / 2));
+    const tiles = visibleTiles(s, this.viewFocus), land = tiles.filter(t => t.kind !== 'water');
+    const sun = this.scene.getObjectByName('sun') as THREE.DirectionalLight;
+    sun.target.position.set(wx(this.viewFocus.x), 0, wz(this.viewFocus.z));
     sun.position.copy(sun.target.position).add(new THREE.Vector3(-35, 65, 35));
-    const extent = Math.max(bounds.width, bounds.height) * UNIT * .65;
+    const extent = VISIBILITY_RADIUS * UNIT * 1.2;
     Object.assign(sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, far: 160 }); sun.shadow.camera.updateProjectionMatrix();
     const earth = new THREE.InstancedMesh(geometry, material('#997b53'), land.length);
     const grass = new THREE.InstancedMesh(geometry, material('#ffffff'), land.length);
@@ -409,12 +411,12 @@ export class World {
     this.terrain.clear();
     for (const [mat, matrices] of batches) { const mesh = new THREE.InstancedMesh(geometry, mat, matrices.length); matrices.forEach((m, i) => mesh.setMatrixAt(i, m)); mesh.castShadow = true; mesh.receiveShadow = true; this.terrain.add(mesh); }
     earth.receiveShadow = true; grass.receiveShadow = true; this.terrain.add(earth, grass);
-    const waters = s.tiles.filter(t => t.kind === 'water'), waterMesh = new THREE.InstancedMesh(geometry, material('#74b7bc'), waters.length);
+    const waters = tiles.filter(t => t.kind === 'water'), waterMesh = new THREE.InstancedMesh(geometry, material('#74b7bc'), waters.length);
     waters.forEach((t, i) => { dummy.position.set(wx(t.x), .22, wz(t.z)); dummy.scale.set(UNIT, .16, UNIT); dummy.updateMatrix(); waterMesh.setMatrixAt(i, dummy.matrix); waterMesh.setColorAt(i, new THREE.Color(t.waterway === 'lake' ? '#c5e3ef' : '#dcf6ec')); });
     waterMesh.receiveShadow = true; this.terrain.add(waterMesh);
     this.tileTargets.push(grass, waterMesh);
     this.buildings.clear(); this.buildingMeshes.clear();
-    for (const b of s.buildings) {
+    for (const b of s.buildings.filter(b => inViewRadius(b, this.viewFocus))) {
       const model = buildingModel(b.kind);
       model.position.set(wx(b.x), b.kind === 'bridge' ? .42 : surfaceHeight(tileAt(s, b.x, b.z)), wz(b.z));
       const final = new THREE.Group();
@@ -435,7 +437,9 @@ export class World {
     this.scene.fog = new THREE.Fog(depth ? '#20282e' : '#cbd8ce', 1000, 2400);
   }
   rebuildUnderground() {
-    const s = this.getState(), tiles = s.underground.filter(t => t.depth === this.depth);
+    const s = this.getState(), tiles = visibleTiles(s, this.viewFocus).flatMap(t => {
+      const cell = undergroundAt(s, t.x, t.z, this.depth); return cell ? [cell] : [];
+    });
     const mesh = new THREE.InstancedMesh(geometry, material('#ffffff'), tiles.length), dummy = new THREE.Object3D();
     const ores: { x: number; z: number; color: string }[] = [];
     tiles.forEach((t, i) => {
@@ -448,12 +452,11 @@ export class World {
     ores.forEach((t, i) => { for (let j = 0; j < 3; j++) { dummy.position.set(wx(t.x) - .35 + j * .3, .94, wz(t.z) + (j % 2 ? .27 : -.2)); dummy.scale.set(.22, .16, .28); dummy.updateMatrix(); oreMesh.setMatrixAt(i * 3 + j, dummy.matrix); oreMesh.setColorAt(i * 3 + j, new THREE.Color(t.color)); } });
     mesh.receiveShadow = true; this.terrain.add(mesh, oreMesh); this.tileTargets.push(mesh);
     this.buildings.clear(); this.buildingMeshes.clear();
-    for (const b of s.buildings.filter(b => b.kind === 'mine' && b.complete)) { const marker = buildingModel('mine'); marker.position.set(wx(b.x), .12, wz(b.z)); this.buildings.add(marker); }
+    for (const b of s.buildings.filter(b => b.kind === 'mine' && b.complete && inViewRadius(b, this.viewFocus))) { const marker = buildingModel('mine'); marker.position.set(wx(b.x), .12, wz(b.z)); this.buildings.add(marker); }
     this.revision = s.revision;
   }
   render(dt: number, time: number) {
     const s = this.getState();
-    if (s.revision !== this.revision) this.rebuild();
     if (this.keys.has('q')) this.rotate(dt * .8);
     if (this.keys.has('e')) this.rotate(-dt * .8);
     const dx = (this.keys.has('d') || this.keys.has('arrowright') ? 1 : 0) - (this.keys.has('a') || this.keys.has('arrowleft') ? 1 : 0);
@@ -465,6 +468,11 @@ export class World {
       this.camera.position.add(offset); this.controls.target.add(offset);
     }
     this.controls.update();
+    const focus = { x: Math.round(this.controls.target.x / UNIT + (ORIGINAL_WIDTH - 1) / 2), z: Math.round(this.controls.target.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2) };
+    if (s.revision !== this.revision || focus.x !== this.viewFocus.x || focus.z !== this.viewFocus.z) {
+      this.viewFocus = focus; this.rebuild();
+    }
+    if (this.preview.visible && !inViewRadius({x:this.preview.position.x / UNIT + (ORIGINAL_WIDTH - 1) / 2, z:this.preview.position.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2}, this.viewFocus)) this.preview.visible = false;
     for (const b of s.buildings) {
       const model = this.buildingMeshes.get(b.id); if (!model) continue;
       const final = model.userData.final as THREE.Group;
@@ -474,6 +482,11 @@ export class World {
     const labelPositions: { x: number; y: number }[] = [];
     for (const v of s.villagers) {
       let g = this.personMeshes.get(v.id);
+      if (v.depth !== this.depth || !inViewRadius(v, this.viewFocus)) {
+        if (g) g.visible = false;
+        const label = this.workerLabels.get(v.id); if (label) label.hidden = true;
+        continue;
+      }
       if (!g) {
         g = new THREE.Group(); g.rotation.order = 'YXZ';
         box(g, isMerchant(v) ? '#b58a44' : ['#bd754c', '#6a8494', '#dac38a', '#799372', '#986b6c'][v.id % 5], 0, .32, 0, .24, .28, .18);
@@ -581,8 +594,8 @@ export class World {
       if (v.cargo) cargo.material = material(v.cargo.resource === 'stone' ? '#98a6a4' : v.cargo.resource === 'planks' ? '#dbb375' : v.cargo.resource === 'food' ? '#c5a249' : v.cargo.resource === 'tools' ? '#718993' : v.cargo.resource === 'knowledge' ? '#899bbb' : '#89603e');
     }
     for (const [id, g] of this.personMeshes) if (!s.villagers.some(v => v.id === id)) { this.people.remove(g); this.personMeshes.delete(id); this.workerLabels.get(id)?.remove(); this.workerLabels.delete(id); }
-    this.selection.visible = !!this.selected;
-    if (this.selected) this.selection.position.set(wx(this.selected.x), (this.depth ? undergroundAt(s, this.selected.x, this.selected.z, this.depth)?.solid ? 1.0 : .15 : surfaceHeight(tileAt(s, this.selected.x, this.selected.z)) + .03), wz(this.selected.z));
+    this.selection.visible = !!this.selected && inViewRadius(this.selected, this.viewFocus);
+    if (this.selected && this.selection.visible) this.selection.position.set(wx(this.selected.x), (this.depth ? undergroundAt(s, this.selected.x, this.selected.z, this.depth)?.solid ? 1.0 : .15 : surfaceHeight(tileAt(s, this.selected.x, this.selected.z)) + .03), wz(this.selected.z));
     this.renderer.render(this.scene, this.camera);
   }
 }

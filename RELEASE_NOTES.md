@@ -1,5 +1,12 @@
 # Release Notes
 
+## 21. September 2026 · Sichtbereich von 30 Feldern
+
+- Die 3D-Ansicht ist auf 30 Felder Radius um das aktuelle Fokusfeld der Kamera begrenzt. Gelände, Wasser, Gebäude und Bewohner außerhalb dieses Bereichs werden ausgeblendet; verborgene Bewohner werden nicht animiert.
+- Der Bereich folgt der Kamera beim Ziehen, bei Tastaturbewegung und beim Zentrieren auf Regionen. Gilt auch unter Tage, einschließlich Schächten und Abbaumarkierungen. Nur dargestellte Felder lassen sich in der 3D-Ansicht anklicken.
+- Die Übersichtskarte zeigt weiterhin alle entdeckten Regionen. Produktion, Transporte und gespeicherte Weltdaten bleiben unabhängig vom Sichtbereich aktiv.
+- 106 Tests erfolgreich; Kreisgrenze, negative Koordinaten, Regionsübergänge und Erhalt der Weltdaten geprüft. Browserprüfung mit 25 Regionen und Produktionsbuild erfolgreich.
+
 ## 21. September 2026 · Rezeptauswahl während laufender Arbeit
 
 - Kupfer, Eisen und Gold lassen sich in der Schmelzhütte jederzeit auswählen. Das Dropdown wird während Produktion und Transport nicht mehr gesperrt. Die gleiche Korrektur gilt für Schmiede, Akademie und Manufaktur.

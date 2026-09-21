@@ -194,3 +194,9 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Ursache: Der Inspektor deaktivierte die Rezeptauswahl bei jeder Aufgabe des zugeteilten Arbeiters und verwarf Änderungen während solcher Aufgaben.
 - 104 Tests erfolgreich. Neue Verhaltenstests bestätigen Eisenproduktion vor anschließendem Kupferrezept, korrekten Zutatenverbrauch, unveränderte Chargengrößen in Akademie/Schmiede/Manufaktur, Wechsel während Zutatenlieferungen, Ersetzen/Widerrufen vorgemerkter Rezepte und identische Fortsetzung nach Speichern/Laden. Ungültige gespeicherte Rezepte werden abgewiesen.
 - Isolierte Browserwelt: Schmelzhütte ausgewählt, Dropdown auf Kupfer gesetzt, Bestätigung „Eingestellt: Kupfer“ sichtbar. TypeScript und Produktionsbuild erfolgreich.
+
+## 21. September 2026 · Sichtbereich auf 30 Felder begrenzt
+
+- 106 Tests erfolgreich. Sichtbereich einschließlich Kreisrand, Ausschluss diagonaler Außenpunkte, negative Koordinaten, Regionsübergänge, maximal 2.821 Felder bei ganzzahligem Fokus und unveränderte Weltdaten geprüft.
+- Browserprüfung in der isolierten Welt mit 25 Regionen (15.600 Felder): begrenzte Darstellung beim Herauszoomen und nachgeführter Ausschnitt beim Ziehen mit linker Maustaste. Übersichtskarte behält alle Regionen. Keine Konsolenfehler.
+- TypeScript und Produktionsbuild erfolgreich. Kein Hardware-FPS-Benchmark; die Simulation der übrigen Welt läuft weiter.
