@@ -155,3 +155,11 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - 89 Tests erfolgreich. Jeder fertige Gebäudetyp ist abreißbar; freies Feld, gültiger Spielstand und Neubau werden geprüft.
 - Zusätzliche Fälle: letztes Gebäude abreißen und nach Speichern/Laden ein Gründungslager neu errichten, Baustellen ohne Lager abbrechen, Bergleute samt Waren sofort zurückholen, einzige belegte Brücke entfernen, Transporte über eine zweite Brücke umleiten und abgeschnittene Minenanreisen aufheben.
 - Browserprüfung in der separaten Economy-Sandbox: Gründungslager 8/12 abgerissen und dort Lagerhaus geplant; neues Gründungslager auf 8/11 geplant. Abrissschaltfläche steht vor dem Warenbestand.
+
+
+## Arbeitsanimationen an der Oberfläche (21.09.2026)
+
+- Reproduzierbare, ausdrücklich vorbereitete Szene: `node --experimental-strip-types scripts/create-workers-fixture.ts`, danach `/?sandbox&scenario=workers`. Lange Arbeitsphasen erleichtern die visuelle Prüfung; diese Szene ist kein Produktionsdurchlauf.
+- Browserprüfung bei 1280×720 mit vergrößerter Kamera: Holzfäller mit Axt in unterschiedlichen Schlagphasen, Steinbrucharbeiter am Felsen, Tagebauarbeiter mit nach unten schlagender Spitzhacke. Arbeiter richten sich zum Ziel aus; Spielpause hält die Pose an.
+- Arbeitswerkzeug und Splitter sind an Arbeitsphase, leeren Transportweg und fehlende Ladung gebunden. Die Positionskorrektur am Vorkommen betrifft ausschließlich die Darstellung.
+- 89 bestehende Tests erfolgreich; TypeScript und Produktionsbuild erfolgreich. Bestehender Hinweis zur Bundlegröße unverändert.

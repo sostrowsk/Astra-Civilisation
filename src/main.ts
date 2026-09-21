@@ -83,7 +83,7 @@ let saveBusy = false;
 let pendingSave: Promise<boolean> = Promise.resolve(true);
 if (import.meta.env.DEV && sandbox) {
   const scenario = new URLSearchParams(location.search).get('scenario');
-  if (scenario && ['village', 'world', 'mining', 'economy', 'surface'].includes(scenario)) {
+  if (scenario && ['village', 'world', 'mining', 'economy', 'surface', 'workers'].includes(scenario)) {
     try { const response = await fetch(`/dev-fixtures/${scenario}.json`); if (!response.ok) throw new Error('Fixture fehlt'); state = deserialize(await response.text()); canSave = true; startupMessage = 'Isolierte Testwelt: ' + scenario; }
     catch { startupMessage = 'Testwelt nicht vorhanden. Zuerst npm run fixtures ausführen.'; }
   }

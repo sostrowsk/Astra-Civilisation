@@ -430,7 +430,7 @@ export class World {
     for (const v of s.villagers) {
       let g = this.personMeshes.get(v.id);
       if (!g) {
-        g = new THREE.Group();
+        g = new THREE.Group(); g.rotation.order = 'YXZ';
         box(g, ['#bd754c', '#6a8494', '#dac38a', '#799372', '#986b6c'][v.id % 5], 0, .32, 0, .24, .28, .18);
         box(g, '#e4b590', 0, .57, 0, .21, .22, .2);
         box(g, '#634734', 0, .68, -.02, .23, .08, .22);
@@ -441,10 +441,24 @@ export class World {
         box(helmet, '#e2b44d', 0, .75, -.02, .29, .13, .28);
         box(helmet, '#fff1af', 0, .74, .15, .1, .08, .07);
         g.add(helmet); g.userData.helmet = helmet;
+        const arms = [-1, 1].map(side => {
+          const arm = new THREE.Group(); arm.position.set(side * .17, .43, .02);
+          box(arm, '#e4b590', 0, -.1, .02, .09, .25, .1);
+          g!.add(arm); return arm;
+        });
+        g.userData.arms = arms;
         const pickaxe = new THREE.Group(); pickaxe.position.set(.2, .4, .08);
         box(pickaxe, '#bb8a57', 0, .13, .05, .055, .45, .055);
         box(pickaxe, '#c4d1d7', 0, .34, .05, .32, .065, .08);
         g.add(pickaxe); g.userData.pickaxe = pickaxe;
+        const axe = new THREE.Group(); axe.position.set(.2, .4, .08);
+        box(axe, WOOD, 0, .17, .04, .065, .62, .065);
+        box(axe, '#8d9b9e', 0, .41, .1, .11, .19, .28);
+        box(axe, '#d8e2de', 0, .41, .25, .12, .23, .07);
+        g.add(axe); g.userData.axe = axe;
+        const chips = new THREE.Group();
+        for (let i = 0; i < 4; i++) box(chips, LIGHTWOOD, 0, 0, 0, .055, .055, .09);
+        g.add(chips); g.userData.chips = chips;
         const label = document.createElement('div'); label.className = 'mine-worker-label'; label.hidden = true; this.container.appendChild(label); this.workerLabels.set(v.id, label);
         const cargo = box(g, LIGHTWOOD, 0, .3, .22, .27, .24, .2); g.userData.cargo = cargo;
         this.people.add(g); this.personMeshes.set(v.id, g);
@@ -453,18 +467,46 @@ export class World {
       g.visible = v.depth === this.depth;
       const miner = !!v.mining || s.buildings.some(b => b.id === v.job && b.kind === 'mine');
       (g.userData.helmet as THREE.Group).visible = miner;
-      const pickaxe = g.userData.pickaxe as THREE.Group;
-      pickaxe.visible = !!v.depth && v.mining?.stage !== 'return';
-      pickaxe.rotation.x = v.mining?.stage === 'work' ? -.4 + Math.sin(s.time * 8 + v.id) * .85 : .3;
-      g.scale.setScalar(this.depth ? 1.5 : 1);
       const walking = !!(v.task?.path.length || v.mining?.path.length);
+      // Work starts only at the resource; carrying and approach paths keep their walking pose.
+      const working = !v.depth && !walking && !v.cargo && v.task?.phase === 'work' && (v.task.kind === 'gather' || v.task.kind === 'excavate');
+      const chopping = working && v.task?.resource === 'wood';
+      const digging = working && v.task?.kind === 'excavate';
+      const target = working ? v.task?.node : undefined;
+      const phase = (s.time * (chopping ? 1.25 : 1.6) + v.id * .37) % 1;
+      // Slow wind-up, fast strike, then recovery. Simulation time also respects pause and speed.
+      const strike = phase < .55 ? 1 - phase / .55 : phase < .72 ? (phase - .55) / .17 : 1;
+      const swing = -.95 + strike * (digging ? 2.8 : 2.25);
+      const pickaxe = g.userData.pickaxe as THREE.Group;
+      pickaxe.visible = (!!v.depth && v.mining?.stage !== 'return') || (working && !chopping);
+      pickaxe.rotation.x = working ? swing : v.mining?.stage === 'work' ? -.4 + Math.sin(s.time * 8 + v.id) * .85 : .3;
+      const axe = g.userData.axe as THREE.Group;
+      axe.visible = !!chopping; axe.rotation.x = swing;
+      const arms = g.userData.arms as THREE.Group[];
+      arms.forEach((arm, i) => { arm.rotation.x = working ? swing - Math.PI : walking ? Math.sin(s.time * 9 + v.id + i * Math.PI) * .4 : 0; });
+      g.scale.setScalar(this.depth ? 1.5 : 1);
       g.position.set(wx(v.x), (this.depth ? .12 : t.kind === 'water' ? .57 : surfaceHeight(t)) + (walking ? Math.abs(Math.sin(s.time * 9 + v.id)) * .055 : 0), wz(v.z));
       if (this.depth && g.visible) {
         // Separate colleagues sharing the same shaft tile without changing their real routes.
         const lane = s.villagers.filter(n => n.job === v.job).findIndex(n => n.id === v.id) % 4;
         g.position.x += lane % 2 ? .23 : -.23; g.position.z += lane < 2 ? -.23 : .23;
       }
-      g.rotation.y = v.facing;
+      g.rotation.y = target && (target.x !== v.x || target.z !== v.z) ? Math.atan2(target.x - v.x, target.z - v.z) : v.facing;
+      g.rotation.x = working ? .08 + strike * .12 : 0;
+      if (target && !digging) {
+        // Lean into the adjacent resource visually without changing the worker's route.
+        g.position.x += Math.sin(g.rotation.y) * .65;
+        g.position.z += Math.cos(g.rotation.y) * .65;
+      }
+      const chips = g.userData.chips as THREE.Group;
+      chips.visible = !!working && phase >= .72;
+      if (chips.visible) chips.children.forEach((part, i) => {
+        const age = (phase - .72) / .28;
+        part.position.set(.1 + (i - 1.5) * age * .17, (digging ? .08 : .45) + Math.sin(age * Math.PI) * .24, .62 + age * (i % 2 ? .15 : -.18));
+        part.rotation.set(age * 5 + i, age * 3, i);
+        part.scale.set(.055 * (1 - age), .055 * (1 - age), .09 * (1 - age));
+        (part as THREE.Mesh).material = material(chopping ? LIGHTWOOD : v.task?.resource === 'coal' ? '#454745' : '#9da7a3');
+      });
       const label = this.workerLabels.get(v.id)!;
       const projected = new THREE.Vector3(g.position.x, g.position.y + 1.3, g.position.z).project(this.camera);
       label.hidden = !(this.depth ? this.labelVisibility.underground : this.labelVisibility.surface) || !g.visible || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;

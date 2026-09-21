@@ -109,6 +109,8 @@ Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bl
 | Pause / Tempo | Leertaste oder 1× / 2× / 4× |
 | Bauplan schließen | Escape |
 
+Holzfäller und Steinbrucharbeiter sind beim Abbau animiert: Axt- beziehungsweise Spitzhackenschläge mit passenden Splittern zeigen die Arbeit am Vorkommen und im Tagebau. Die Bewegungen folgen Spieltempo und Pause.
+
 ## Gebäude abreißen
 
 **Gebäude anklicken → Gebäude abreißen → Jetzt abreißen** entfernt jedes fertige Gebäude – einschließlich Gründungslager, Minen und Brücken – und gibt das Feld für Neubauten frei. „Behalten“ bricht den Vorgang ab. Bewohner bleiben in der Siedlung, zugewiesene Arbeiter werden frei; weniger Wohnraum verhindert weiteren Zuzug, bis wieder Platz vorhanden ist.

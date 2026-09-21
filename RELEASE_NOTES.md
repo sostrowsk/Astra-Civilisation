@@ -1,5 +1,12 @@
 # Release Notes
 
+## 21. September 2026 · Holzfäller und Steinbrucharbeiter animiert
+
+- Holzfäller holen sichtbar mit einer Axt aus und schlagen zum Baum hin; Steinbrucharbeiter verwenden eine Spitzhacke. Auch im Tagebau wird nach unten geschlagen.
+- Bewegte Arme, leichtes Vorbeugen sowie Holz- und Steinsplitter zeigen die laufende Arbeit. Beim Anmarsch, Rücktransport und Warten endet die Arbeitsanimation.
+- Animationen folgen der Spielzeit: Pause hält sie an, höhere Geschwindigkeit beschleunigt sie. Abbauraten und Transportwege bleiben unverändert.
+- Browserprüfung in isolierter Arbeiterszene, 89 bestehende Tests und Produktionsbuild erfolgreich.
+
 ## 21. September 2026 · Alle Gebäudetypen abreißen
 
 - Abriss jetzt auch für Gründungslager, aktive Minen und benutzte oder einzige Brücken. Die Abrissschaltfläche steht direkt über dem Warenbestand, ohne langes Scrollen.
