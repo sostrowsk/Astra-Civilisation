@@ -62,7 +62,7 @@ const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const sandbox = new URLSearchParams(location.search).has('sandbox');
 const labelSettingsKey = 'astra-civilisation:labels' + (sandbox ? ':sandbox' : '');
-const labelVisibility = { surface: false, underground: true };
+const labelVisibility = { surface: false, underground: false };
 try {
   const saved = JSON.parse(localStorage.getItem(labelSettingsKey) ?? '{}');
   if (typeof saved?.surface === 'boolean') labelVisibility.surface = saved.surface;

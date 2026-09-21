@@ -207,7 +207,7 @@ export class World {
   buildingMeshes = new Map<number, THREE.Group>();
   personMeshes = new Map<number, THREE.Group>();
   workerLabels = new Map<number, HTMLDivElement>();
-  labelVisibility = { surface: false, underground: true };
+  labelVisibility = { surface: false, underground: false };
   preview: THREE.Mesh;
   selection: THREE.Mesh;
   revision = -1;

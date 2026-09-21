@@ -75,7 +75,7 @@ Metall und Forschungsrohstoff werden im jeweiligen Gebäude eingestellt, sobald 
 
 ## Zivilisation und Bedienung
 
-Über **Bewohnerlabels** kannst du Namen und Tätigkeiten für **Oberfläche** und **Unter Tage** getrennt ein- und ausblenden. Die Einstellung bleibt in diesem Browser für alle Partien gespeichert. Standardmäßig sind Oberflächenlabels aus und Untertagelabels an.
+Über **Bewohnerlabels** kannst du Namen und Tätigkeiten für **Oberfläche** und **Unter Tage** getrennt ein- und ausblenden. Die Einstellung bleibt in diesem Browser für alle Partien gespeichert. Standardmäßig sind beide ausgeschaltet.
 
 Fünf Stufen in fester Reihenfolge: **Pionierlager → Dorf → Viehzucht → Kleinstadt → Manufaktur**. Bevölkerungsgrenzen: **20 / 32 / 48 / 96 / 128**. Wohnhäuser bieten zwei Plätze, Bergmannshäuser vier.
 

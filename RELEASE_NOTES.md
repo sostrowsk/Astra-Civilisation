@@ -3,7 +3,7 @@
 ## 21. September 2026 · Bewohnerlabels ein- und ausblenden
 
 - Unter **Bewohnerlabels** lassen sich Namen und Tätigkeiten getrennt für **Oberfläche** und **Unter Tage** ein- oder ausblenden.
-- Die Auswahl bleibt nach Neuladen und beim Wechsel zwischen Partien in diesem Browser erhalten. Sandbox-Einstellungen sind getrennt. Standard: Oberfläche aus, Untertage an.
+- Die Auswahl bleibt nach Neuladen und beim Wechsel zwischen Partien in diesem Browser erhalten. Sandbox-Einstellungen sind getrennt. Standard: Oberfläche und Untertage aus. Bereits gespeicherte Einstellungen bleiben erhalten.
 - Oberflächenlabels zeigen passende Tätigkeiten wie Transport, Steinabbau oder Arbeit statt pauschal „unterwegs“.
 - TypeScript und Produktionsbuild erfolgreich; Ein-/Ausblenden auf beiden Ebenen und dauerhaft gespeicherte Einstellungen im Browser geprüft.
 
