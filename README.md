@@ -109,6 +109,12 @@ Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bl
 | Pause / Tempo | Leertaste oder 1× / 2× / 4× |
 | Bauplan schließen | Escape |
 
+## Gebäude abreißen
+
+**Gebäude anklicken → Gebäude abreißen → Jetzt abreißen** entfernt ein fertiges Gebäude und gibt das Feld für Neubauten frei. „Behalten“ bricht den Vorgang ab. Bewohner bleiben in der Siedlung, zugewiesene Arbeiter werden frei; weniger Wohnraum verhindert weiteren Zuzug, bis wieder Platz vorhanden ist.
+
+Lagerwaren und bereits transportierte Güter bleiben erhalten. Bei vollen Lagern warten sie als Rückgaben im Wirtschafts-Dashboard. Baukosten, bereits verbrauchte Produktionszutaten und angebrochene Ausrüstung werden nicht erstattet. Das Gründungslager bleibt geschützt. Minen erst pausieren und Bergleute zurückkehren lassen; Brücken können nicht während der Benutzung oder als einzige Verbindung zu Bewohnern/Gebäuden entfernt werden. Der Abriss eines Außenpostens entfernt dessen Baubereich, aber keine bereits entdeckten Regionen.
+
 ## Spielstände
 
 Über **Spielstände** verwaltest du mehrere benannte Partien: laden, umbenennen und nach Bestätigung löschen. **Neue Welt** startet eine zufällige Welt oder einen eingegebenen Seed. **Neu starten** beginnt dieselbe Landschaft als zusätzliche Partie im Pionierlager; der bisherige Fortschritt bleibt erhalten. Vor jedem Wechsel wird die aktuelle Partie gespeichert. Beim Öffnen wird die zuletzt gewählte Welt fortgesetzt.
@@ -134,7 +140,7 @@ Der automatisierte Start-bis-Eisenscheren-Durchlauf benötigt mit Seed 42 etwa *
 
 ## Grenzen
 
-Erkundete Regionen werden aktuell gemeinsam im Speicher gehalten und lokal gespeichert. Sehr große Welten können Browser-Speicherquota, RAM und Leistung erreichen; es gibt noch kein Auslagern ferner Regionen. Untertage umfasst drei taktische Tiefenebenen, keine First-Person-Steuerung und kein frei verformbares 3D-Blockvolumen. Gewässer werden zusammenhängend erzeugt, aber nicht als Flüssigkeit zur Laufzeit simuliert. Keine Monster, Einstürze, Multiplayer oder vollständige Touch-Steuerung. Fertige Gebäude sind noch nicht abreißbar.
+Erkundete Regionen werden aktuell gemeinsam im Speicher gehalten und lokal gespeichert. Sehr große Welten können Browser-Speicherquota, RAM und Leistung erreichen; es gibt noch kein Auslagern ferner Regionen. Untertage umfasst drei taktische Tiefenebenen, keine First-Person-Steuerung und kein frei verformbares 3D-Blockvolumen. Gewässer werden zusammenhängend erzeugt, aber nicht als Flüssigkeit zur Laufzeit simuliert. Keine Monster, Einstürze, Multiplayer oder vollständige Touch-Steuerung.
 
 Geometrie, Icons und Schriftdateien werden lokal ausgeliefert. Three.js und Vite mit TypeScript; DM Sans und Manrope über Fontsource. Keine externen Assets während des Spiels. Schriftlizenzen liegen in den jeweiligen npm-Paketen.
 

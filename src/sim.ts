@@ -142,6 +142,47 @@ export function cancelConstruction(s: GameState, id: number): boolean {
   event(s, 'Baustelle aufgehoben. Material geht zurück ins Gründungslager.');
   return true;
 }
+export function demolitionCheck(s: GameState, id: number): { ok: boolean; reason: string } {
+  const b = s.buildings.find(b => b.id === id);
+  if (!b?.complete) return { ok: false, reason: 'Nur fertige Gebäude können abgerissen werden. Baustellen lassen sich abbrechen.' };
+  if (b.kind === 'camp') return { ok: false, reason: 'Das Gründungslager bleibt als Heimat und zentrales Lager erhalten.' };
+  if (b.kind === 'mine' && s.villagers.some(v => v.mining?.mineId === id)) return { ok: false, reason: 'Pausiere die Mine und warte, bis alle Bergleute samt Waren zurückgekehrt sind.' };
+  if (b.kind === 'bridge') {
+    const onBridge = (p: Point) => Math.round(p.x) === b.x && Math.round(p.z) === b.z;
+    if (s.villagers.some(v => (!v.depth && onBridge(v)) || v.task?.path.some(onBridge) || (v.mining?.stage === 'approach' && v.mining.path.some(onBridge)))) return { ok: false, reason: 'Die Brücke wird gerade benutzt. Warte, bis Bewohner und laufende Transporte sie verlassen haben.' };
+    const after = { ...s, buildings: s.buildings.filter(n => n.id !== id) };
+    const beforeAccess = reachable(s), afterAccess = reachable(after);
+    const cutOff = (p: Point) => beforeAccess.has(key(Math.round(p.x), Math.round(p.z))) && !afterAccess.has(key(Math.round(p.x), Math.round(p.z)));
+    if (after.buildings.some(n => cutOff(n.kind === 'bridge' && n.complete ? n : entrance(n))) || s.villagers.some(v => !v.depth && cutOff(v))) return { ok: false, reason: 'Diese Brücke ist die einzige Verbindung zu Bewohnern oder Gebäuden. Baue zuerst einen anderen Übergang.' };
+  }
+  return { ok: true, reason: 'Gebäude kann abgerissen werden.' };
+}
+export function demolishBuilding(s: GameState, id: number): { ok: boolean; reason: string } {
+  const check = demolitionCheck(s, id); if (!check.ok) return check;
+  const b = s.buildings.find(b => b.id === id)!;
+  s.returns ??= emptyStock();
+  for (const r of RESOURCES) s.returns[r] += b.inventory[r];
+  for (const v of s.villagers) {
+    if (v.home === id) delete v.home;
+    if (v.task && (v.task.destId === id || v.task.sourceId === id || v.job === id)) {
+      // Cargo has already left its source. Uncollected reservations simply expire.
+      if (v.cargo) { s.returns[v.cargo.resource] += v.cargo.amount; v.cargo = null; }
+      v.task = null;
+    }
+    if (v.job === id) v.job = null;
+  }
+  for (const tile of s.underground) if (tile.order === id) tile.order = null;
+  s.buildings = s.buildings.filter(n => n.id !== id);
+  // Completed bridges use their own walkable tile if an old shore access disappeared.
+  if (b.kind === 'bridge') for (const other of s.buildings) if (other.kind === 'bridge' && other.bridgeEntrance?.x === b.x && other.bridgeEntrance.z === b.z) other.bridgeEntrance = { x: other.x, z: other.z };
+  for (const r of RESOURCES) for (const store of s.buildings.filter(isStorage)) {
+    const amount = Math.min(s.returns[r], roomFor(s, store, r));
+    store.inventory[r] += amount; s.returns[r] -= amount;
+  }
+  s.revision++;
+  const reason = `${DEFINITIONS[b.kind].name} abgerissen · das Feld ist wieder frei.`;
+  event(s, reason); return { ok: true, reason };
+}
 function available(s: GameState, b: Building, r: Resource) {
   return b.inventory[r] - s.villagers.reduce((n, v) => n + (v.task?.sourceId === b.id && v.task.phase === 'pickup' && v.task.resource === r ? v.task.amount : 0), 0);
 }

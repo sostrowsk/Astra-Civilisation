@@ -142,3 +142,9 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - TypeScript und Produktionsbuild erfolgreich, bestehender Bundlegrößenhinweis unverändert.
 - Browserprüfung bei 1280×720 in `?sandbox&scenario=surface`: fünf unterschiedlich große Jungbäume neben einem ausgewachsenen Baum sichtbar; Jungbaum bei 7/8 zeigt Stufe 3/6 und „noch bebaubar“. Stein bei 12/9 bevorzugt markiert und Priorität aufgehoben. Vorbereiteter terrassierter Tagebau bei 18/12 zeigt zwei abgegrabene Ebenen; dritte Ebene beauftragt und pausiert, korrekter Hinweis auf den pausierten Steinbruch.
 - Visuelle Szene reproduzierbar mit `node --experimental-strip-types scripts/create-surface-fixture.ts`. Die vorbereitete Szene prüft Darstellung und Bedienung; die Simulationstests prüfen tatsächlichen Abbau und Rohstofferhaltung.
+
+## Gebäudeabriss (21.09.2026)
+
+- 85 Tests erfolgreich: sechs neue Verhaltenstests prüfen Hausabriss und Neubau, Erhalt von Bewohnern, exakte Rückgabe von Waren und Transportladungen bei vollen Lagern, Freigabe von Arbeitern, Entfernung von Wohnzuordnungen, Minenräumung mit Erhalt der Höhlen, Brückenschutz und Schutz des Gründungslagers. Speichern/Laden bleibt nach Abriss gültig.
+- Browserprüfung in separater Economy-Sandbox: Wohnhaus 6/14 ausgewählt, Abriss mit „Behalten“ abgebrochen, erneut geöffnet und bestätigt. Danach Lagerhaus auf 6/14 als Baustelle angelegt. Kein Eingriff in die reguläre Partie.
+- TypeScript, Produktionsbuild und `git diff --check` erfolgreich. Bestehender Hinweis zur Bundlegröße unverändert.

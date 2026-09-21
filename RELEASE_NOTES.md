@@ -1,5 +1,13 @@
 # Release Notes
 
+## 21. September 2026 · Gebäude abreißen
+
+- Fertige Gebäude lassen sich im Auswahlfenster nach Bestätigung abreißen. Das Feld kann anschließend anders bebaut werden.
+- Bewohner bleiben erhalten; Arbeits- und Wohnzuordnungen werden bereinigt. Lagerwaren und Transportladungen werden ohne Duplikate zurückgeführt, bei Platzmangel über die Rückgabewarteschlange.
+- Baukosten, bereits eingesetzte Produktionszutaten und angebrochene Ausrüstung werden nicht erstattet.
+- Gründungslager geschützt; Minen erst nach Rückkehr ihrer Bergleute abreißbar. Brücken dürfen weder gerade benutzt werden noch Bewohner oder Gebäude abschneiden.
+- **85 Tests** erfolgreich. Browserprüfung: Abriss abbrechen, bestätigen und auf derselben Fläche ein Lagerhaus planen. TypeScript und Produktionsbuild erfolgreich.
+
 ## 21. September 2026 · Bewohnerlabels ein- und ausblenden
 
 - Unter **Bewohnerlabels** lassen sich Namen und Tätigkeiten getrennt für **Oberfläche** und **Unter Tage** ein- oder ausblenden.
