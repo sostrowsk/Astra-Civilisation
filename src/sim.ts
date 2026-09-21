@@ -9,7 +9,7 @@ export type Resource = typeof RESOURCES[number];
 export type Stock = Record<Resource, number>;
 export type Point = { x: number; z: number };
 export type BuildingKind = 'camp' | 'woodcutter' | 'sawmill' | 'quarry' | 'house' | 'miningHouse' | 'warehouse' | 'bridge' | 'outpost' | 'farm' | 'forester' | 'workshop' | 'academy' | 'townhall' | 'mine' | 'smelter' | 'forge' | 'sheepfold' | 'weaver' | 'tailor' | 'manufactory';
-export type Tool = Exclude<BuildingKind, 'camp'> | 'road';
+export type Tool = BuildingKind | 'road';
 export const NAMES: Record<Resource, string> = { wood: 'Holz', planks: 'Bretter', stone: 'Stein', food: 'Nahrung', tools: 'Werkzeuge', knowledge: 'Wissen', coal: 'Kohle', copperOre: 'Kupfererz', ironOre: 'Eisenerz', goldOre: 'Golderz', diamond: 'Diamanten', copper: 'Kupfer', iron: 'Eisen', gold: 'Gold', shears: 'Scheren', drill: 'Bohrer', wool: 'Wolle', cloth: 'Stoff', clothes: 'Kleidung', wire: 'Kupferdraht', gears: 'Zahnräder', machineParts: 'Maschinenteile' };
 export const goods = (wood = 0, planks = 0, stone = 0, food = 0, tools = 0, knowledge = 0): Stock => ({ wood, planks, stone, food, tools, knowledge, coal: 0, copperOre: 0, ironOre: 0, goldOre: 0, diamond: 0, copper: 0, iron: 0, gold: 0, shears: 0, drill: 0, wool: 0, cloth: 0, clothes: 0, wire: 0, gears: 0, machineParts: 0 });
 export const emptyStock = (): Stock => goods();
@@ -54,6 +54,13 @@ export const inside = (x: number, z: number) => Number.isSafeInteger(x) && Numbe
 export const buildingAt = (s: GameState, x: number, z: number) => s.buildings.find(b => b.z === z && b.x === x);
 export const entrance = (b: Building): Point => b.bridgeEntrance ?? { x: b.x, z: b.z };
 export const isStorage = (b: Building) => b.complete && ['camp', 'warehouse', 'outpost', 'townhall'].includes(b.kind);
+// A settlement remains playable even after its last building has been removed.
+function settlementOrigins(s: GameState): Point[] {
+  return [...s.buildings.filter(b => b.complete).map(entrance), ...s.villagers.filter(v => !v.depth).map(v => ({ x: Math.round(v.x), z: Math.round(v.z) }))].filter(p => walkable(s, p.x, p.z));
+}
+function reachableFromSettlement(s: GameState, p: Point) {
+  return settlementOrigins(s).some(origin => findPath(s, origin, p) !== null);
+}
 export function walkable(s: GameState, x: number, z: number): boolean {
   if (!inside(x, z)) return false;
   const tile = tileAt(s, x, z);
@@ -86,7 +93,8 @@ export function createGame(seed = randomSeed()): GameState {
 const PEOPLE = ['Alva', 'Bruno', 'Clara', 'Emil', 'Frida', 'Jonas', 'Lina', 'Milo', 'Nora', 'Oskar', 'Ada', 'Ben', 'Ella', 'Finn', 'Greta', 'Hugo', 'Ida', 'Jona', 'Kira', 'Leo'];
 function addVillager(s: GameState, home?: Building) {
   const i = s.villagers.length;
-  s.villagers.push({ id: i + 1, name: PEOPLE[i % PEOPLE.length] + (i >= 20 ? ` ${Math.floor(i / 20) + 1}` : ''), x: i < 10 ? 7 + (i % 4) : 8, z: i < 10 ? 13 + Math.floor(i / 4) : 12, job: null, task: null, cargo: null, facing: 0, depth: 0, mining: null, ...(home ? { home: home.id, x: home.x, z: home.z } : {}) });
+  const arrival = home ?? s.buildings.find(b => b.complete && ['camp', 'house'].includes(b.kind)) ?? settlementOrigins(s)[0];
+  s.villagers.push({ id: i + 1, name: PEOPLE[i % PEOPLE.length] + (i >= 20 ? ` ${Math.floor(i / 20) + 1}` : ''), x: i < 10 ? 7 + (i % 4) : 8, z: i < 10 ? 13 + Math.floor(i / 4) : 12, job: null, task: null, cargo: null, facing: 0, depth: 0, mining: null, ...(i >= 10 && arrival ? { x: arrival.x, z: arrival.z } : {}), ...(home ? { home: home.id } : {}) });
 }
 export function event(s: GameState, message: string) {
   s.events.unshift({ time: s.time, message }); s.events.length = Math.min(s.events.length, 30);
@@ -98,11 +106,12 @@ export function placement(s: GameState, tool: Tool, x: number, z: number): { ok:
   const deny = (reason: string) => ({ ok: false, reason, x, z });
   if (!inside(x, z)) return deny('Wähle ein Feld innerhalb der Insel.');
   if (!tileAt(s, x, z)?.discovered) return deny('Noch unerforscht. Öffne die Expeditionskarte.');
+  if (tool === 'camp' && s.buildings.some(b => b.kind === 'camp')) return deny('Es gibt bereits ein Gründungslager. Reiße es zuerst ab, um es zu versetzen.');
   if (tool !== 'road' && (DEFINITIONS[tool].tier ?? 1) > s.level) return deny(`Wird ab Stufe ${DEFINITIONS[tool].tier} freigeschaltet.`);
   if (tool === 'bridge') {
     if (tileAt(s, x, z).kind !== 'water') return deny('Platziere Brückenfelder auf Wasser.');
     if (buildingAt(s, x, z)) return deny('Hier ist bereits eine Brücke geplant.');
-    const shore = [{ x: x - 1, z }, { x: x + 1, z }, { x, z: z - 1 }, { x, z: z + 1 }].find(p => findPath(s, s.buildings[0], p) !== null);
+    const shore = [{ x: x - 1, z }, { x: x + 1, z }, { x, z: z - 1 }, { x, z: z + 1 }].find(p => reachableFromSettlement(s, p));
     if (!shore) return deny('Baue vom erreichbaren Ufer oder einer fertigen Brücke aus weiter.');
     return { ok: true, reason: 'Brückenfeld mit Zugang vom Ufer.', x, z };
   }
@@ -111,9 +120,10 @@ export function placement(s: GameState, tool: Tool, x: number, z: number): { ok:
   if (tile.excavation?.ordered || tile.excavation?.remaining || s.villagers.some(v => v.task?.kind === 'excavate' && v.task.phase === 'work' && v.task.node?.x === x && v.task.node.z === z)) return deny('Zuerst die begonnene Tagebauschicht fertig abgraben.');
   if (tile.node) return deny(tile.node === 'tree' ? 'Hier steht ein Baum. Dein Holzfäller kann ihn abbauen.' : 'Hier liegt ein Steinvorkommen.');
   if (buildingAt(s, x, z)) return deny('Dieses Feld ist bereits bebaut.');
-  if (tool === 'outpost' && distance(s.buildings[0], tile) < 5) return deny('Halte mindestens 5 Felder Abstand vom Gründungslager.');
-  if (!findPath(s, s.buildings[0], { x, z })) return deny('Noch nicht erreichbar. Baue zuerst eine Brücke.');
-  if (tile.region !== 0 && tool !== 'outpost' && tool !== 'road' && !s.buildings.some(b => b.complete && (b.kind === 'outpost' || b.kind === 'camp') && distance(b, tile) <= 9)) return deny('Baue zuerst einen Außenposten in höchstens 9 Feldern Entfernung.');
+  const camp = s.buildings.find(b => b.kind === 'camp');
+  if (tool === 'outpost' && camp && distance(camp, tile) < 5) return deny('Halte mindestens 5 Felder Abstand vom Gründungslager.');
+  if (!reachableFromSettlement(s, { x, z })) return deny('Noch nicht erreichbar. Baue zuerst eine Brücke.');
+  if (tile.region !== 0 && tool !== 'camp' && tool !== 'outpost' && tool !== 'road' && !s.buildings.some(b => b.complete && (b.kind === 'outpost' || b.kind === 'camp') && distance(b, tile) <= 9)) return deny('Baue zuerst einen Außenposten in höchstens 9 Feldern Entfernung.');
   if (tool === 'road' && tile.road) return deny('Hier liegt bereits ein Weg.');
   return { ok: true, reason: tool === 'road' ? 'Wege machen deine Bewohner 60 % schneller.' : 'Klicken, um die Baustelle zu planen.', x, z };
 }
@@ -122,7 +132,7 @@ export function place(s: GameState, tool: Tool, x: number, z: number): { ok: boo
   if (!check.ok) return check;
   if (tool === 'road') { tileAt(s, x, z).road = true; tileAt(s, x, z).sapling = 0; s.revision++; return { ok: true, reason: 'Weg angelegt.' }; }
   const b: Building = { id: s.nextId++, x: check.x, z: check.z, kind: tool, complete: false, progress: 0, delivered: emptyStock(), inventory: emptyStock(), active: true };
-  if (tool === 'bridge') b.bridgeEntrance = [{ x: x - 1, z }, { x: x + 1, z }, { x, z: z - 1 }, { x, z: z + 1 }].find(p => findPath(s, s.buildings[0], p) !== null);
+  if (tool === 'bridge') b.bridgeEntrance = [{ x: x - 1, z }, { x: x + 1, z }, { x, z: z - 1 }, { x, z: z + 1 }].find(p => reachableFromSettlement(s, p));
   if (tool === 'mine') { b.mineDepth = 1; b.autoMine = true; }
   tileAt(s, b.x, b.z).sapling = 0; s.buildings.push(b); s.revision++;
   event(s, `${DEFINITIONS[tool].name}: Die ersten Lieferungen werden vorbereitet.`);
@@ -131,31 +141,33 @@ export function place(s: GameState, tool: Tool, x: number, z: number): { ok: boo
 export function cancelConstruction(s: GameState, id: number): boolean {
   const b = s.buildings.find(b => b.id === id);
   if (!b || b.complete) return false;
-  const camp = s.buildings[0];
   s.returns ??= emptyStock();
-  for (const r of RESOURCES) { const amount = Math.min(b.delivered[r], roomFor(s, camp, r)); camp.inventory[r] += amount; s.returns[r] += b.delivered[r] - amount; }
+  for (const r of RESOURCES) s.returns[r] += b.delivered[r];
   for (const v of s.villagers) if (v.task?.destId === id) {
     if (v.cargo) { s.returns[v.cargo.resource] += v.cargo.amount; v.cargo = null; v.task = null; }
     else v.task = null;
   }
   s.buildings = s.buildings.filter(b => b.id !== id); s.revision++;
-  event(s, 'Baustelle aufgehoben. Material geht zurück ins Gründungslager.');
+  distributeReturns(s);
+  event(s, 'Baustelle aufgehoben. Material geht zurück ins Lager oder wartet als Rückgabe.');
   return true;
 }
 export function demolitionCheck(s: GameState, id: number): { ok: boolean; reason: string } {
   const b = s.buildings.find(b => b.id === id);
   if (!b?.complete) return { ok: false, reason: 'Nur fertige Gebäude können abgerissen werden. Baustellen lassen sich abbrechen.' };
-  if (b.kind === 'camp') return { ok: false, reason: 'Das Gründungslager bleibt als Heimat und zentrales Lager erhalten.' };
-  if (b.kind === 'mine' && s.villagers.some(v => v.mining?.mineId === id)) return { ok: false, reason: 'Pausiere die Mine und warte, bis alle Bergleute samt Waren zurückgekehrt sind.' };
-  if (b.kind === 'bridge') {
-    const onBridge = (p: Point) => Math.round(p.x) === b.x && Math.round(p.z) === b.z;
-    if (s.villagers.some(v => (!v.depth && onBridge(v)) || v.task?.path.some(onBridge) || (v.mining?.stage === 'approach' && v.mining.path.some(onBridge)))) return { ok: false, reason: 'Die Brücke wird gerade benutzt. Warte, bis Bewohner und laufende Transporte sie verlassen haben.' };
-    const after = { ...s, buildings: s.buildings.filter(n => n.id !== id) };
-    const beforeAccess = reachable(s), afterAccess = reachable(after);
-    const cutOff = (p: Point) => beforeAccess.has(key(Math.round(p.x), Math.round(p.z))) && !afterAccess.has(key(Math.round(p.x), Math.round(p.z)));
-    if (after.buildings.some(n => cutOff(n.kind === 'bridge' && n.complete ? n : entrance(n))) || s.villagers.some(v => !v.depth && cutOff(v))) return { ok: false, reason: 'Diese Brücke ist die einzige Verbindung zu Bewohnern oder Gebäuden. Baue zuerst einen anderen Übergang.' };
-  }
   return { ok: true, reason: 'Gebäude kann abgerissen werden.' };
+}
+function returnCargo(s: GameState, v: Villager) {
+  s.returns ??= emptyStock();
+  if (v.cargo) s.returns[v.cargo.resource] += v.cargo.amount;
+  v.cargo = null; v.task = null;
+}
+function distributeReturns(s: GameState) {
+  if (!s.returns) return;
+  for (const r of RESOURCES) for (const store of s.buildings.filter(isStorage)) {
+    const amount = Math.min(s.returns[r], roomFor(s, store, r));
+    store.inventory[r] += amount; s.returns[r] -= amount;
+  }
 }
 export function demolishBuilding(s: GameState, id: number): { ok: boolean; reason: string } {
   const check = demolitionCheck(s, id); if (!check.ok) return check;
@@ -164,21 +176,48 @@ export function demolishBuilding(s: GameState, id: number): { ok: boolean; reaso
   for (const r of RESOURCES) s.returns[r] += b.inventory[r];
   for (const v of s.villagers) {
     if (v.home === id) delete v.home;
+    if (v.mining?.mineId === id) {
+      returnCargo(s, v); v.mining = null; v.depth = 0; v.x = b.x; v.z = b.z;
+    }
     if (v.task && (v.task.destId === id || v.task.sourceId === id || v.job === id)) {
       // Cargo has already left its source. Uncollected reservations simply expire.
-      if (v.cargo) { s.returns[v.cargo.resource] += v.cargo.amount; v.cargo = null; }
-      v.task = null;
+      returnCargo(s, v);
     }
     if (v.job === id) v.job = null;
   }
   for (const tile of s.underground) if (tile.order === id) tile.order = null;
   s.buildings = s.buildings.filter(n => n.id !== id);
-  // Completed bridges use their own walkable tile if an old shore access disappeared.
-  if (b.kind === 'bridge') for (const other of s.buildings) if (other.kind === 'bridge' && other.bridgeEntrance?.x === b.x && other.bridgeEntrance.z === b.z) other.bridgeEntrance = { x: other.x, z: other.z };
-  for (const r of RESOURCES) for (const store of s.buildings.filter(isStorage)) {
-    const amount = Math.min(s.returns[r], roomFor(s, store, r));
-    store.inventory[r] += amount; s.returns[r] -= amount;
+  if (b.kind === 'bridge') {
+    for (const other of s.buildings.filter(n => n.kind === 'bridge')) {
+      if (other.complete) other.bridgeEntrance = { x: other.x, z: other.z };
+      else if (other.bridgeEntrance?.x === b.x && other.bridgeEntrance.z === b.z) {
+        other.bridgeEntrance = [{ x: other.x - 1, z: other.z }, { x: other.x + 1, z: other.z }, { x: other.x, z: other.z - 1 }, { x: other.x, z: other.z + 1 }].find(p => walkable(s, p.x, p.z)) ?? { x: other.x, z: other.z };
+      }
+    }
+    for (const v of s.villagers.filter(v => !v.depth)) {
+      // Rescue anyone standing on the removed crossing onto the nearest safe tile.
+      if (!walkable(s, Math.round(v.x), Math.round(v.z))) {
+        const shore = s.tiles.filter(t => walkable(s, t.x, t.z)).sort((a, c) => distance(v, a) - distance(v, c))[0];
+        if (shore) { v.x = shore.x; v.z = shore.z; }
+      }
+      const t = v.task;
+      if (t) {
+        const dest = entrance(s.buildings.find(n => n.id === t.destId)!);
+        const source = s.buildings.find(n => n.id === t.sourceId);
+        const target = t.path.at(-1) ?? { x: Math.round(v.x), z: Math.round(v.z) };
+        const path = findPath(s, v, target);
+        if (!path || !findPath(s, target, dest) || (t.phase === 'pickup' && source && !findPath(s, entrance(source), dest))) returnCargo(s, v);
+        else t.path = path;
+      }
+      if (v.mining?.stage === 'approach') {
+        const mine = s.buildings.find(n => n.id === v.mining!.mineId)!;
+        const path = findPath(s, v, mine);
+        if (path) v.mining.path = path;
+        else { returnCargo(s, v); v.mining = null; v.job = null; }
+      }
+    }
   }
+  distributeReturns(s);
   s.revision++;
   const reason = `${DEFINITIONS[b.kind].name} abgerissen · das Feld ist wieder frei.`;
   event(s, reason); return { ok: true, reason };
@@ -309,7 +348,8 @@ function finishTask(s: GameState, v: Villager) {
     if (!source || source.inventory[t.resource] < t.amount) { v.task = null; return; }
     source.inventory[t.resource] -= t.amount;
     v.cargo = { resource: t.resource, amount: t.amount };
-    const destination = s.buildings.find(b => b.id === t.destId) ?? s.buildings[0];
+    const destination = s.buildings.find(b => b.id === t.destId);
+    if (!destination) { returnCargo(s, v); return; }
     t.destId = destination.id; t.phase = 'drop'; t.path = findPath(s, v, entrance(destination)) ?? [];
     return;
   }
@@ -346,7 +386,8 @@ function finishTask(s: GameState, v: Villager) {
     return;
   }
   if (t.phase === 'drop') {
-    const b = s.buildings.find(b => b.id === t.destId) ?? s.buildings[0];
+    const b = s.buildings.find(b => b.id === t.destId);
+    if (!b) { returnCargo(s, v); return; }
     if (t.kind === 'saw' || t.kind === 'craft') { t.phase = 'work'; t.timer = recipeFor(s, b)!.seconds; return; }
     if (v.cargo) {
       if (b.complete && roomFor(s, b, v.cargo.resource, v.id) < v.cargo.amount) return;
@@ -359,7 +400,7 @@ export function step(s: GameState, dt: number) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   // The application calls this in fixed 0.1-second increments.
   s.time += dt; pruneHistory(s);
-  if (s.returns) for (const r of RESOURCES) for (const b of s.buildings.filter(isStorage)) { const n = Math.min(s.returns[r], roomFor(s, b, r)); b.inventory[r] += n; s.returns[r] -= n; }
+  distributeReturns(s);
   for (const b of s.buildings) if (!b.complete && RESOURCES.every(r => b.delivered[r] >= DEFINITIONS[b.kind].cost[r])) {
     b.progress = Math.min(1, b.progress + dt / (b.kind === 'bridge' ? 12 : 8));
     if (b.progress >= 1) {
@@ -368,7 +409,7 @@ export function step(s: GameState, dt: number) {
       if (!s.milestones.includes(b.kind)) s.milestones.push(b.kind);
       event(s, `${DEFINITIONS[b.kind].name} fertiggestellt!`);
       if (b.kind === 'mine') openMine(s, b);
-      if (b.kind === 'house' || b.kind === 'miningHouse') welcomeResidents(s);
+      if (b.kind === 'camp' || b.kind === 'house' || b.kind === 'miningHouse') welcomeResidents(s);
       if (b.kind === 'outpost' && !s.won) { s.won = true; event(s, 'Ein neues Kapitel beginnt. Euer erster Außenposten steht!'); }
     }
   }
@@ -448,7 +489,7 @@ export function deserialize(raw: string): GameState {
   const validPoint = (p: Point, whole = true) => p && finite(p.x) && finite(p.z) && !!tileAt(s, Math.round(p.x), Math.round(p.z)) && (!whole || (Number.isInteger(p.x) && Number.isInteger(p.z)));
   const legacy = s?.version === 3 && (s.economyVersion === undefined || s.economyVersion === 1);
   if (legacy && Array.isArray(s.buildings)) for (const b of s.buildings) for (const a of [b.inventory, b.delivered]) if (a) for (const r of ['shears', 'drill', 'wool', 'cloth', 'clothes', 'wire', 'gears', 'machineParts'] as const) a[r] ??= 0;
-  if (!s || s.version !== 3 || !integer(s.seed) || !finite(s.time) || s.time < 0 || !integer(s.nextId) || !integer(s.revision) || typeof s.won !== 'boolean' || !Array.isArray(s.tiles) || s.tiles.length !== s.regions?.length * CHUNK_W * CHUNK_H || !Array.isArray(s.buildings) || !s.buildings.length || s.buildings.length > s.tiles.length || !Array.isArray(s.villagers) || s.villagers.length < 10 || s.villagers.length > 128 || !Array.isArray(s.milestones) || !Array.isArray(s.events)) fail();
+  if (!s || s.version !== 3 || !integer(s.seed) || !finite(s.time) || s.time < 0 || !integer(s.nextId) || !integer(s.revision) || typeof s.won !== 'boolean' || !Array.isArray(s.tiles) || s.tiles.length !== s.regions?.length * CHUNK_W * CHUNK_H || !Array.isArray(s.buildings) || s.buildings.length > s.tiles.length || !Array.isArray(s.villagers) || s.villagers.length < 10 || s.villagers.length > 128 || !Array.isArray(s.milestones) || !Array.isArray(s.events)) fail();
   for (const [i, t] of s.tiles.entries()) if (!validPoint(t) || !inside(t.x, t.z) || !['grass', 'water'].includes(t.kind) || ![null, 'tree', 'rock'].includes(t.node) || !integer(t.amount) || !finite(t.height) || t.height < 0 || t.height > 20 || !finite(t.variant) || typeof t.road !== 'boolean') fail();
   for (const t of s.tiles) if (t.priorityFelling !== undefined && (typeof t.priorityFelling !== 'boolean' || (t.priorityFelling && (!t.discovered || t.node !== 'tree' || !t.amount)))) fail();
   if (!integer(s.level) || s.level < 1 || s.level > 5 || !Array.isArray(s.regions) || !s.regions.includes(0) || new Set(s.regions).size !== s.regions.length || !s.regions.every(id => integer(id) && Number.isSafeInteger(id)) || !integer(s.ecologyTick) || !integer(s.woodGrown)) fail();
@@ -473,7 +514,7 @@ export function deserialize(raw: string): GameState {
     if (b.equipmentUses !== undefined && (!integer(b.equipmentUses) || b.equipmentUses > 40)) fail();
     ids.add(b.id);
   }
-  if (s.buildings[0].kind !== 'camp' || !s.buildings[0].complete || s.nextId <= Math.max(...ids)) fail();
+  if (s.buildings.filter(b => b.kind === 'camp').length > 1 || s.nextId <= Math.max(0, ...ids)) fail();
   const peopleIds = new Set<number>();
   for (const v of s.villagers) {
     if (!validPoint(v, false) || !integer(v.id) || peopleIds.has(v.id) || typeof v.name !== 'string' || v.name.length > 40 || !finite(v.facing) || (v.job !== null && !ids.has(v.job))) fail();
@@ -554,7 +595,7 @@ export function worldBounds(s: GameState) {
 }
 export function populationCap(s: GameState) { return ERAS[s.level - 1].cap; }
 export function workerTarget(b: Building) { return b.kind === 'mine' ? b.mineWorkers ?? 1 : 1; }
-export function housingCapacity(s: GameState) { return Math.min(populationCap(s), 10 + s.buildings.filter(b => b.complete).reduce((n, b) => n + (b.kind === 'house' ? 2 : b.kind === 'miningHouse' ? 4 : 0), 0)); }
+export function housingCapacity(s: GameState) { return Math.min(populationCap(s), s.buildings.filter(b => b.complete).reduce((n, b) => n + (b.kind === 'camp' ? 10 : b.kind === 'house' ? 2 : b.kind === 'miningHouse' ? 4 : 0), 0)); }
 function welcomeResidents(s: GameState) {
   while (s.villagers.length < housingCapacity(s)) {
     const home = s.buildings.find(b => b.complete && b.kind === 'miningHouse' && s.villagers.filter(v => v.home === b.id).length < 4);
@@ -635,7 +676,7 @@ export function recipeFor(s: GameState, b: Building): { input: Resource | null; 
   return null;
 }
 function reachable(s: GameState) {
-  const start = entrance(s.buildings[0]), visited = new Set<string>([key(start.x, start.z)]), queue = [start];
+  const queue = settlementOrigins(s).slice(0, 1), visited = new Set(queue.map(p => key(p.x, p.z)));
   for (let i = 0; i < queue.length; i++) for (const [dx, dz] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
     const p = { x: queue[i].x + dx, z: queue[i].z + dz }, k = key(p.x, p.z);
     if (visited.has(k) || !walkable(s, p.x, p.z)) continue;

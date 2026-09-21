@@ -148,3 +148,10 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - 85 Tests erfolgreich: sechs neue Verhaltenstests prüfen Hausabriss und Neubau, Erhalt von Bewohnern, exakte Rückgabe von Waren und Transportladungen bei vollen Lagern, Freigabe von Arbeitern, Entfernung von Wohnzuordnungen, Minenräumung mit Erhalt der Höhlen, Brückenschutz und Schutz des Gründungslagers. Speichern/Laden bleibt nach Abriss gültig.
 - Browserprüfung in separater Economy-Sandbox: Wohnhaus 6/14 ausgewählt, Abriss mit „Behalten“ abgebrochen, erneut geöffnet und bestätigt. Danach Lagerhaus auf 6/14 als Baustelle angelegt. Kein Eingriff in die reguläre Partie.
 - TypeScript, Produktionsbuild und `git diff --check` erfolgreich. Bestehender Hinweis zur Bundlegröße unverändert.
+
+
+## Vollständiger Rückbau aller Gebäudetypen (21.09.2026)
+
+- 89 Tests erfolgreich. Jeder fertige Gebäudetyp ist abreißbar; freies Feld, gültiger Spielstand und Neubau werden geprüft.
+- Zusätzliche Fälle: letztes Gebäude abreißen und nach Speichern/Laden ein Gründungslager neu errichten, Baustellen ohne Lager abbrechen, Bergleute samt Waren sofort zurückholen, einzige belegte Brücke entfernen, Transporte über eine zweite Brücke umleiten und abgeschnittene Minenanreisen aufheben.
+- Browserprüfung in der separaten Economy-Sandbox: Gründungslager 8/12 abgerissen und dort Lagerhaus geplant; neues Gründungslager auf 8/11 geplant. Abrissschaltfläche steht vor dem Warenbestand.

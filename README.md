@@ -111,9 +111,9 @@ Bewohner liefern Baustoffe und Waren selbstständig; mindestens zwei Personen bl
 
 ## Gebäude abreißen
 
-**Gebäude anklicken → Gebäude abreißen → Jetzt abreißen** entfernt ein fertiges Gebäude und gibt das Feld für Neubauten frei. „Behalten“ bricht den Vorgang ab. Bewohner bleiben in der Siedlung, zugewiesene Arbeiter werden frei; weniger Wohnraum verhindert weiteren Zuzug, bis wieder Platz vorhanden ist.
+**Gebäude anklicken → Gebäude abreißen → Jetzt abreißen** entfernt jedes fertige Gebäude – einschließlich Gründungslager, Minen und Brücken – und gibt das Feld für Neubauten frei. „Behalten“ bricht den Vorgang ab. Bewohner bleiben in der Siedlung, zugewiesene Arbeiter werden frei; weniger Wohnraum verhindert weiteren Zuzug, bis wieder Platz vorhanden ist.
 
-Lagerwaren und bereits transportierte Güter bleiben erhalten. Bei vollen Lagern warten sie als Rückgaben im Wirtschafts-Dashboard. Baukosten, bereits verbrauchte Produktionszutaten und angebrochene Ausrüstung werden nicht erstattet. Das Gründungslager bleibt geschützt. Minen erst pausieren und Bergleute zurückkehren lassen; Brücken können nicht während der Benutzung oder als einzige Verbindung zu Bewohnern/Gebäuden entfernt werden. Der Abriss eines Außenpostens entfernt dessen Baubereich, aber keine bereits entdeckten Regionen.
+Lagerwaren und bereits transportierte Güter bleiben erhalten. Bei vollen Lagern warten sie als Rückgaben im Wirtschafts-Dashboard. Baukosten, bereits verbrauchte Produktionszutaten und angebrochene Ausrüstung werden nicht erstattet. Das Gründungslager kann unter **Dorf & Stadt → Gründungslager** kostenlos neu errichtet werden; es gibt höchstens eines gleichzeitig. Auch ganz ohne Gebäude bleibt die Partie spielbar und speicherbar. Beim Minenabriss werden Bergleute samt Ladung an die Oberfläche geholt; Höhlen bleiben erhalten. Beim Brückenabriss werden Bewohner auf ein sicheres Feld versetzt und laufende Wege neu geplant; abgeschnittene Transporte werden mit Warenrückgabe aufgehoben. Getrennte Ufer benötigen für den Warenaustausch wieder eine Brücke. Der Abriss eines Außenpostens entfernt dessen Baubereich, aber keine bereits entdeckten Regionen.
 
 ## Spielstände
 

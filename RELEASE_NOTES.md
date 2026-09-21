@@ -1,5 +1,13 @@
 # Release Notes
 
+## 21. September 2026 · Alle Gebäudetypen abreißen
+
+- Abriss jetzt auch für Gründungslager, aktive Minen und benutzte oder einzige Brücken. Die Abrissschaltfläche steht direkt über dem Warenbestand, ohne langes Scrollen.
+- Bergleute werden samt Ladung an die Oberfläche geholt. Bewohner auf abgerissenen Brücken werden auf ein sicheres Feld versetzt; Transporte werden umgeleitet oder mit Warenrückgabe aufgehoben.
+- Das Gründungslager lässt sich unter „Dorf & Stadt“ kostenlos neu errichten. Kein neuer Startvorrat; vorhandene Waren bleiben auch ohne Lager in der Rückgabewarteschlange erhalten.
+- Speichern, Laden und Weiterbauen funktionieren auch nach dem Abriss des letzten Gebäudes. Wohnraum wird aus den tatsächlich vorhandenen Gebäuden berechnet, Bewohner bleiben erhalten.
+- 89 Tests erfolgreich, darunter Abriss und Neubau für jeden Gebäudetyp, aktive Minen, Brücken mit und ohne Umleitung sowie vollständiger Rückbau. Browserprüfung: Gründungslager abgerissen, Lagerhaus auf dem alten Feld und neues Gründungslager an anderer Stelle geplant.
+
 ## 21. September 2026 · Gebäude abreißen
 
 - Fertige Gebäude lassen sich im Auswahlfenster nach Bestätigung abreißen. Das Feld kann anschließend anders bebaut werden.
