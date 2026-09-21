@@ -34,6 +34,16 @@ Brücken entstehen **feldweise** für jeweils vier Bretter und zwei Stein. Vom e
 
 Um einen Bauplatz freizumachen: **Baum anklicken → Bevorzugt fällen**. Holzfäller bevorzugen markierte Bäume innerhalb ihrer normalen Reichweite von neun Feldern und tragen das Holz regulär ab. Laufende Arbeiten und Lieferungen werden zuerst beendet. Die goldene Markierung bleibt bis zum vollständigen Fällen erhalten; der Auftrag wird mitgespeichert. Im Auswahlfenster lassen sich die Priorität aufheben und Wartegründe ablesen, etwa fehlender Holzfäller, blockierter Weg oder volles Lager.
 
+## Nachwachsende Bäume und Tagebau
+
+Neue Bäume wachsen über **fünf sichtbare Jungbaumstufen**, bevor sie ausgewachsen sind. Solange sie jung sind, bleiben Felder begehbar und bebaubar; Bauen entfernt den Jungbaum. Die Reife dauert je nach Biom 8–15 Spielminuten, mit Försterei halb so lange. Erst ausgewachsene Bäume blockieren das Bauen.
+
+**Steinvorkommen anklicken → Bevorzugt abbauen** gibt diesem endlichen Vorkommen Vorrang. Ein Steinbruch ohne verbleibendes Vorkommen weist auf den Tagebau hin.
+
+**Freies Landfeld anklicken → Tagebau eröffnen** beauftragt Steinbrucharbeiter im Umkreis von neun Feldern. Je Auftrag werden **20 Rohstoffe aus einer Schicht** abgetragen. Die nächste Schicht wird erneut beauftragt; maximal drei Ebenen sind möglich. Vor Ebene 2 müssen die acht Nachbarfelder auf Ebene 1 liegen, vor Ebene 3 auf Ebene 2. Dadurch entstehen Terrassen: mindestens 3×3 Felder für die zweite und 5×5 für die dritte Ebene in der Mitte. Die Tiefe zählt ab der ursprünglichen Oberfläche.
+
+Ebene 1 liefert Stein. Auf Ebene 2 enthalten **5 %**, auf Ebene 3 **10 %** der Feldschichten stattdessen Braunkohle. Die Verteilung hängt vom Seed ab; Braunkohle zählt zum vorhandenen Kohlevorrat. Steinbrüche lagern maximal 20 Stein und 20 Kohle getrennt. Gebäude, Wege und Wasser können nicht abgegraben werden. Begonnene Schichten müssen vor dem Bauen fertig abgegraben werden; der Abbau lässt sich pausieren und fortsetzen.
+
 ## Bergbau
 
 Ab dem **Dorf** stehen im Reiter **Bergbau** Mineneingang, Schmelzhütte und Schmiede bereit.

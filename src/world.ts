@@ -1,3 +1,4 @@
+import { surfaceHeight, treeGrowthStage, pitResource } from './surface.ts';
 import { undergroundAt, ORE_COLORS } from './mining.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -287,7 +288,7 @@ export class World {
     const s = this.getState(), check = placement(s, tool, p.x, p.z);
     const bridge = false;
     const x = p.x;
-    this.preview.position.set(wx(x), tileAt(s, p.x, p.z).height + .1, wz(p.z));
+    this.preview.position.set(wx(x), surfaceHeight(tileAt(s, p.x, p.z)) + .1, wz(p.z));
     this.preview.scale.set(bridge ? 3.12 : 1.53, .16, 1.53);
     (this.preview.material as THREE.MeshBasicMaterial).color.set(check.ok ? '#d0efa0' : '#e27d68');
     this.preview.visible = true;
@@ -307,10 +308,20 @@ export class World {
     const grass = new THREE.InstancedMesh(geometry, material('#ffffff'), land.length);
     const matrix = new THREE.Matrix4(); const dummy = new THREE.Object3D();
     land.forEach((t, i) => {
-      dummy.position.set(wx(t.x), (t.height - .2) / 2 - .3, wz(t.z)); dummy.scale.set(UNIT, t.height + .4, UNIT); dummy.updateMatrix(); matrix.copy(dummy.matrix); earth.setMatrixAt(i, matrix);
-      dummy.position.y = t.height - .07; dummy.scale.set(UNIT, .14, UNIT); dummy.updateMatrix(); grass.setMatrixAt(i, dummy.matrix);
-      grass.setColorAt(i, new THREE.Color(t.road ? '#c4b180' : t.biome === 'highland' && t.height > 6.2 ? '#e2e7df' : BIOMES[t.biome].ground).multiplyScalar(t.road ? 1 : .94 + t.variant * .12));
-      const g = new THREE.Group(); g.position.set(wx(t.x), t.height, wz(t.z));
+      const top = surfaceHeight(t), bottom = -3.4;
+      dummy.position.set(wx(t.x), (top + bottom) / 2 - .07, wz(t.z)); dummy.scale.set(UNIT, top - bottom, UNIT); dummy.updateMatrix(); matrix.copy(dummy.matrix); earth.setMatrixAt(i, matrix);
+      dummy.position.y = top - .07; dummy.scale.set(UNIT, .14, UNIT); dummy.updateMatrix(); grass.setMatrixAt(i, dummy.matrix);
+      grass.setColorAt(i, new THREE.Color(t.excavation ? '#9b9685' : t.road ? '#c4b180' : t.biome === 'highland' && t.height > 6.2 ? '#e2e7df' : BIOMES[t.biome].ground).multiplyScalar(t.road ? 1 : .94 + t.variant * .12));
+      const g = new THREE.Group(); g.position.set(wx(t.x), top, wz(t.z));
+      if (t.excavation?.ordered || t.priorityQuarrying) {
+        for (const edge of [-.7, .7]) {
+          box(g, '#e5ad52', edge, .06, 0, .07, .08, 1.45);
+          box(g, '#e5ad52', 0, .06, edge, 1.45, .08, .07);
+        }
+      }
+      if (t.excavation?.remaining && pitResource(s.seed, t.x, t.z, t.excavation.depth + 1) === 'coal') {
+        for (const x of [-.38, 0, .38]) box(g, '#564230', x, .08, .18, .22, .12, .55);
+      }
       if (t.node === 'tree') {
         if (t.priorityFelling) {
           for (const edge of [-.7, .7]) {
@@ -331,9 +342,12 @@ export class World {
         box(g, '#a7b2a3', .25, .52, -.15, .7, 1.04, .72);
         box(g, '#bac3b2', .2, 1.05, -.15, .5, .12, .52);
       } else if (t.sapling) {
-        box(g, '#8c744b', 0, .2, 0, .07, .4, .07);
-        box(g, BIOMES[t.biome].leaves, 0, .43, 0, .4, .3, .35);
-      } else if (!t.road && !buildingAt(s, t.x, t.z) && t.variant > .88) {
+        const scale = [.18, .30, .45, .62, .82][treeGrowthStage(t) - 1];
+        const h = (1.25 + t.variant * .8) * scale;
+        box(g, '#8c744b', 0, h / 2, 0, .26 * scale, h, .28 * scale);
+        box(g, BIOMES[t.biome].leaves, 0, h + .1 * scale, 0, 1.25 * scale, .85 * scale, 1.15 * scale);
+        box(g, BIOMES[t.biome].leaves, -.1 * scale, h + .64 * scale, 0, .88 * scale, .5 * scale, .82 * scale);
+      } else if (!t.excavation && !t.road && !buildingAt(s, t.x, t.z) && t.variant > .88) {
         for (let j = 0; j < 3; j++) {
           const x = -.4 + j * .31, z = (j % 2) * .4 - .2;
           box(g, '#7e9458', x, .12, z, .05, .24, .05);
@@ -356,7 +370,7 @@ export class World {
     this.buildings.clear(); this.buildingMeshes.clear();
     for (const b of s.buildings) {
       const model = buildingModel(b.kind);
-      model.position.set(wx(b.x), b.kind === 'bridge' ? .42 : tileAt(s, b.x, b.z).height, wz(b.z));
+      model.position.set(wx(b.x), b.kind === 'bridge' ? .42 : surfaceHeight(tileAt(s, b.x, b.z)), wz(b.z));
       const final = new THREE.Group();
       while (model.children.length) final.add(model.children[0]);
       model.add(final);
@@ -443,7 +457,7 @@ export class World {
       pickaxe.rotation.x = v.mining?.stage === 'work' ? -.4 + Math.sin(s.time * 8 + v.id) * .85 : .3;
       g.scale.setScalar(this.depth ? 1.5 : 1);
       const walking = !!(v.task?.path.length || v.mining?.path.length);
-      g.position.set(wx(v.x), (this.depth ? .12 : t.kind === 'water' ? .57 : t.height) + (walking ? Math.abs(Math.sin(s.time * 9 + v.id)) * .055 : 0), wz(v.z));
+      g.position.set(wx(v.x), (this.depth ? .12 : t.kind === 'water' ? .57 : surfaceHeight(t)) + (walking ? Math.abs(Math.sin(s.time * 9 + v.id)) * .055 : 0), wz(v.z));
       if (this.depth && g.visible) {
         // Separate colleagues sharing the same shaft tile without changing their real routes.
         const lane = s.villagers.filter(n => n.job === v.job).findIndex(n => n.id === v.id) % 4;
@@ -469,7 +483,7 @@ export class World {
     }
     for (const [id, g] of this.personMeshes) if (!s.villagers.some(v => v.id === id)) { this.people.remove(g); this.personMeshes.delete(id); this.workerLabels.get(id)?.remove(); this.workerLabels.delete(id); }
     this.selection.visible = !!this.selected;
-    if (this.selected) this.selection.position.set(wx(this.selected.x), (this.depth ? undergroundAt(s, this.selected.x, this.selected.z, this.depth)?.solid ? 1.0 : .15 : tileAt(s, this.selected.x, this.selected.z).height + .03), wz(this.selected.z));
+    if (this.selected) this.selection.position.set(wx(this.selected.x), (this.depth ? undergroundAt(s, this.selected.x, this.selected.z, this.depth)?.solid ? 1.0 : .15 : surfaceHeight(tileAt(s, this.selected.x, this.selected.z)) + .03), wz(this.selected.z));
     this.renderer.render(this.scene, this.camera);
   }
 }

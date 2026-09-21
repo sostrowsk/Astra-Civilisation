@@ -1,5 +1,15 @@
 # Release Notes
 
+## 21. September 2026 · Baumwachstum und Tagebau
+
+- Fünf sichtbare Jungbaumstufen; erst ausgewachsene Bäume blockieren das Bauen. Reifezeit 8–15 Spielminuten, mit Försterei halbiert.
+- Endliche Steinvorkommen lassen sich bevorzugt abbauen. Erschöpfte Steinbrüche weisen auf neue Tagebauaufträge hin.
+- Freie Landfelder können als Tagebau beauftragt werden. Steinbrucharbeiter tragen je Schicht 20 Rohstoffe ab; maximal drei Ebenen. Vor jeder Vertiefung müssen alle acht Nachbarn auf der bisherigen Ebene liegen.
+- Sichtbar abgesenkte Terrassen mit passenden Gebäude- und Bewohnerhöhen. Markierungen und Minikarte zeigen Tagebaufelder.
+- Braunkohle statt Stein in 5 % der Feldschichten auf Ebene 2 und 10 % auf Ebene 3. Seedabhängig, endlich und als vorhandener Kohlerohstoff nutzbar.
+- Pausieren/Fortsetzen, Lagergrenzen, reservierte Abbaumengen und Speichern/Laden werden unterstützt. Bestehende v3-Spielstände bleiben lesbar.
+- **79 Tests**, TypeScript und Produktionsbuild erfolgreich. Browserprüfung mit Wachstumsstufen, Steinpriorität und terrassiertem Tagebau; Details im [QA-Protokoll](docs/QA.md).
+
 ## 20. September 2026 · Bäume gezielt fällen
 
 - Beim Anklicken eines Baums lässt sich **Bevorzugt fällen** auswählen, um die Fläche für ein Gebäude freizumachen.

@@ -135,3 +135,10 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - 71 Tests erfolgreich, einschließlich fünf neuer Verhaltenstests: Vorrang vor näheren Bäumen bis zur vollständigen Rodung und bebaubare Fläche, bestehende Arbeit erhalten und Priorität aufheben, unerreichbare/entfernte Ziele überspringen, pausierte Betriebe und Lagergrenzen respektieren, Speichern/Laden und Validierung.
 - TypeScript-Prüfung und Produktionsbuild erfolgreich; bestehender Bundlegrößenhinweis unverändert.
 - Browserprüfung in separater Sandbox: Baum bei 4 / 10 ausgewählt, „Bevorzugt fällen“ aktiviert, goldenen Rahmen und Hinweis auf fehlenden Holzfäller gesehen, Priorität wieder aufgehoben. Die reguläre Partie blieb unberührt.
+
+## Baumwachstum und Tagebau (21.09.2026)
+
+- **79 Tests erfolgreich**, darunter acht neue Verhaltenstests für fünf bebaubare Jungbaumstufen, Reifung und Försterei, bevorzugten Steinabbau, endliche Schichten, 3×3-/5×5-Terrassen, Braunkohleverteilung, getrennte Lagergrenzen, Pausieren, deterministisches Fortsetzen, geschützte Felder und zwei gleichzeitig arbeitende Steinbrüche.
+- TypeScript und Produktionsbuild erfolgreich, bestehender Bundlegrößenhinweis unverändert.
+- Browserprüfung bei 1280×720 in `?sandbox&scenario=surface`: fünf unterschiedlich große Jungbäume neben einem ausgewachsenen Baum sichtbar; Jungbaum bei 7/8 zeigt Stufe 3/6 und „noch bebaubar“. Stein bei 12/9 bevorzugt markiert und Priorität aufgehoben. Vorbereiteter terrassierter Tagebau bei 18/12 zeigt zwei abgegrabene Ebenen; dritte Ebene beauftragt und pausiert, korrekter Hinweis auf den pausierten Steinbruch.
+- Visuelle Szene reproduzierbar mit `node --experimental-strip-types scripts/create-surface-fixture.ts`. Die vorbereitete Szene prüft Darstellung und Bedienung; die Simulationstests prüfen tatsächlichen Abbau und Rohstofferhaltung.

@@ -1,3 +1,4 @@
+import { treeGrowthStage, excavationCheck, excavationStatus, orderExcavation, pitResource } from './surface.ts';
 import { capacity, economyRows, staffingSummary, equipmentFor } from './economy.ts';
 import { seedNumber } from './generator.ts';
 import { mineStatus, DEPTHS, ORE_COLORS, undergroundAt, ensureDepth, markMining } from './mining.ts';
@@ -8,7 +9,7 @@ import { browserSaveStore, readStoredGame } from './persistence.ts';
 import { SaveLibrary, type SavedWorld } from './save-library.ts';
 import { knownRegions, regionInfo, BIOMES, ERAS, populationCap, civilisationProgress, advanceCivilisation, expeditionStatus, explore, worldBounds, spendableStock, workerTarget } from './sim.ts';
 import { World } from './world.ts';
-import { createGame, step, stock, place, placement, markTreeForFelling, treeFellingStatus, tileAt, buildingAt, buildingStatus, cancelConstruction, serialize, deserialize, DEFINITIONS, NAMES, RESOURCES, type GameState, type Tool, type Point, type BuildingKind, type Building } from './sim.ts';
+import { createGame, step, stock, place, placement, markTreeForFelling, treeFellingStatus, markStoneForQuarrying, tileAt, buildingAt, buildingStatus, cancelConstruction, serialize, deserialize, DEFINITIONS, NAMES, RESOURCES, type GameState, type Tool, type Point, type BuildingKind, type Building } from './sim.ts';
 
 const ICONS: Record<string, string> = {
   sheepfold: '<path d="M5 17v5m12-5v5M4 10c-2-5 5-8 8-4 5-3 9 2 6 6v5H5V9Zm14-2h3v6h-3"/>',
@@ -74,7 +75,7 @@ let saveBusy = false;
 let pendingSave: Promise<boolean> = Promise.resolve(true);
 if (import.meta.env.DEV && sandbox) {
   const scenario = new URLSearchParams(location.search).get('scenario');
-  if (scenario && ['village', 'world', 'mining', 'economy'].includes(scenario)) {
+  if (scenario && ['village', 'world', 'mining', 'economy', 'surface'].includes(scenario)) {
     try { const response = await fetch(`/dev-fixtures/${scenario}.json`); if (!response.ok) throw new Error('Fixture fehlt'); state = deserialize(await response.text()); canSave = true; startupMessage = 'Isolierte Testwelt: ' + scenario; }
     catch { startupMessage = 'Testwelt nicht vorhanden. Zuerst npm run fixtures ausführen.'; }
   }
@@ -157,7 +158,7 @@ function updateInspector() {
   const panel = el('inspector');
   const b = selected ? buildingAt(state, selected.x, selected.z) : undefined;
   const t = selected ? tileAt(state, selected.x, selected.z) : undefined;
-  const key = tool ? `tool-${tool}` : b ? `building-${b.id}-${b.complete}` : t ? `tile-${t.x}-${t.z}-${t.node}` : `intro-${state.level}-${state.milestones.join(',')}`;
+  const key = tool ? `tool-${tool}` : b ? `building-${b.id}-${b.complete}` : t ? `tile-${t.x}-${t.z}-${t.node}-${!!t.excavation}` : `intro-${state.level}-${state.milestones.join(',')}`;
   if (key !== inspectorKey) {
     inspectorKey = key;
     const close = `<button class="icon-button panel-close" id="close-inspector" aria-label="Auswahl schließen">${icon('close')}</button>`;
@@ -173,7 +174,8 @@ function updateInspector() {
       if (!b.complete) el('cancel-construction').onclick = () => { cancelConstruction(state, b.id); selected = null; world.selected = null; inspectorKey = ''; updateUI(); toast('Baustelle abgebrochen. Material wird zurückgeführt.'); };
       else if (DEFINITIONS[b.kind].producer || b.kind === 'forester') el('toggle-production').onclick = () => { b.active = !b.active; updateInspector(); };
     } else if (t?.node) {
-      panel.innerHTML = `${close}<div class="eyebrow">ENTDECKT <span>${t.x} / ${t.z}</span></div><div class="inspector-icon">${icon(t.node === 'tree' ? 'woodcutter' : 'stone')}</div><h2>${t.node === 'tree' ? 'Ein Stück Wald' : 'Steinvorkommen'}</h2><div class="biome-label">${BIOMES[t.biome].name} · ${regionInfo(state, t.region).name}</div><p>${t.node === 'tree' ? 'Ein Holzfäller in der Nähe kann diesen Baum abbauen. Danach wird das Feld frei.' : 'Baue einen Steinbruch in der Nähe. Ein Arbeiter trägt den gewonnenen Stein zurück.'}</p><div class="deposit-amount" id="deposit-amount"></div>${t.node === 'tree' ? '<button class="primary" id="priority-felling">Bevorzugt fällen</button><p id="felling-status" aria-live="polite"></p>' : ''}`;
+      panel.innerHTML = `${close}<div class="eyebrow">ENTDECKT <span>${t.x} / ${t.z}</span></div><div class="inspector-icon">${icon(t.node === 'tree' ? 'woodcutter' : 'stone')}</div><h2>${t.node === 'tree' ? 'Ein Stück Wald' : 'Steinvorkommen'}</h2><div class="biome-label">${BIOMES[t.biome].name} · ${regionInfo(state, t.region).name}</div><p>${t.node === 'tree' ? 'Ein Holzfäller in der Nähe kann diesen Baum abbauen. Danach wird das Feld frei.' : 'Baue einen Steinbruch in der Nähe. Ein Arbeiter trägt den gewonnenen Stein zurück.'}</p><div class="deposit-amount" id="deposit-amount"></div>${t.node === 'tree' ? '<button class="primary" id="priority-felling">Bevorzugt fällen</button><p id="felling-status" aria-live="polite"></p>' : '<button class="primary" id="priority-quarrying">Bevorzugt abbauen</button><p id="quarrying-status"></p>'}`;
+      if (t.node === 'rock') el('priority-quarrying').onclick = () => { markStoneForQuarrying(state, t.x, t.z, !t.priorityQuarrying); updateInspector(); save(); };
       if (t.node === 'tree') el('priority-felling').onclick = () => {
         const marked = !t.priorityFelling;
         if (markTreeForFelling(state, t.x, t.z, marked)) {
@@ -182,7 +184,11 @@ function updateInspector() {
         }
       };
     } else if (t) {
-      panel.innerHTML = `${close}<div class="eyebrow">DEIN TAL <span>${t.x} / ${t.z}</span></div><div class="inspector-icon">${icon(t.kind === 'water' ? 'bridge' : 'compass')}</div><h2>${t.kind === 'water' ? t.waterway === 'lake' ? 'Ein stiller See' : 'Ein Flusslauf' : t.road ? 'Ein guter Weg' : BIOMES[t.biome].name}</h2><p class="biome-note">${regionInfo(state, t.region).name} · ${t.sapling ? 'Ein junger Baum wächst heran.' : BIOMES[t.biome].description}</p><p>${t.kind === 'water' ? 'Der Fluss trennt die beiden Ufer. Eine Brücke öffnet eurer Siedlung neue Wege.' : 'Wähle unten ein Gebäude und mache aus diesem Feld einen Teil deiner Siedlung.'}</p>`;
+      panel.innerHTML = `${close}<div class="eyebrow">DEIN TAL <span>${t.x} / ${t.z}</span></div><div class="inspector-icon">${icon(t.kind === 'water' ? 'bridge' : 'compass')}</div><h2>${t.kind === 'water' ? t.waterway === 'lake' ? 'Ein stiller See' : 'Ein Flusslauf' : t.excavation ? 'Tagebau' : t.road ? 'Ein guter Weg' : BIOMES[t.biome].name}</h2><p class="biome-note">${regionInfo(state, t.region).name} · ${t.sapling ? 'Ein junger Baum wächst heran. Bis zur vollen Größe bleibt das Feld bebaubar.' : BIOMES[t.biome].description}</p><p>${t.kind === 'water' ? 'Der Fluss trennt die beiden Ufer. Eine Brücke öffnet eurer Siedlung neue Wege.' : 'Wähle unten ein Gebäude und mache aus diesem Feld einen Teil deiner Siedlung.'}</p>`;
+      if (t.kind !== 'water') {
+        panel.innerHTML += '<p id="growth-status"></p><div class="inventory-label">TAGEBAU · MAXIMAL 3 EBENEN</div><p id="pit-info"></p><p id="pit-status"></p><button class="primary" id="pit-order">Tagebau eröffnen</button><p>20 Rohstoffe je Feld und Ebene. Ab Ebene 2 müssen alle acht Nachbarfelder auf der vorherigen Ebene liegen. Braunkohle: 5 % auf Ebene 2, 10 % auf Ebene 3; nutzbar als Kohle.</p>';
+        el('pit-order').onclick = () => { const result = orderExcavation(state, t.x, t.z, !t.excavation?.ordered); toast(result.reason); inspectorKey = ''; updateInspector(); save(); };
+      }
     } else if (state.milestones.length) {
       const next = state.won ? undefined : missions.find(m => !state.milestones.includes(m.kind));
       panel.innerHTML = `<div class="eyebrow">DAS LEBEN IM TAL</div><div class="intro-art">${icon('woodcutter')}${icon('house')}${icon('outpost')}</div><h2>Dein Dorf lebt.</h2><p>Jede Lieferung bringt euch weiter. Klicke auf ein Gebäude, um seinen Betrieb und seine Waren zu sehen.</p><div class="economy-chain"><span>${icon('wood')} Holz</span>${icon('arrow')}<span>${icon('planks')} Bretter</span></div><p>${next ? `Euer nächster Schritt: <strong>${next.title}</strong>.` : state.level < 5 ? `Mit der Stufe ${ERAS[state.level - 1].name} eröffnen sich neue Möglichkeiten: entdecke Regionen und plane den nächsten Aufstieg.` : 'Alle Stufen erreicht. Erschließe die restlichen Regionen und baue neue Siedlungen.'}</p><button class="primary" id="continue-building">${next ? `${DEFINITIONS[next.kind].name} planen` : 'Neue Horizonte entdecken'} ${icon('arrow')}</button>`;
@@ -204,6 +210,18 @@ function updateInspector() {
       el('building-details').innerHTML = `<div class="inventory-label">DEINE BERGMANN-SIEDLUNG</div><p>${residents.length} / 4 Wohnplätze belegt</p><p>${residents.map(v => escape(v.name)).join(', ') || 'Noch keine Bewohner eingezogen. Prüfe die Bevölkerungsgrenze.'}</p><p>${residents.filter(v => state.buildings.some(m => m.id === v.job && m.kind === 'mine')).length} im Bergbau beschäftigt</p><p>Nahe Mine auswählen und bis zu vier Bergleute einstellen. Ein Lagerhaus verkürzt den Abtransport.</p>`;
     }
     if ((DEFINITIONS[b.kind].producer || b.kind === 'forester') && b.complete) el('toggle-production').textContent = b.active ? 'Betrieb pausieren' : 'Betrieb fortsetzen';
+  }
+  if (t?.node === 'rock' && !b && !tool) {
+    el('priority-quarrying').textContent = t.priorityQuarrying ? 'Abbaupriorität aufheben' : 'Bevorzugt abbauen';
+    el('quarrying-status').textContent = t.priorityQuarrying ? 'Bevorzugt vorgemerkt. Benötigt einen aktiven Steinbruch mit Arbeiter, freiem Lager und begehbarem Zugang im Umkreis von 9 Feldern. Laufende Arbeiten werden beendet.' : '';
+  }
+  if (t && !t.node && !b && !tool && t.kind !== 'water') {
+    el('growth-status').textContent = t.sapling ? `Baumwachstum: Stufe ${treeGrowthStage(t)} / 6 · noch bebaubar.` : '';
+    el('pit-info').textContent = `Abgegraben: ${t.excavation?.depth ?? 0} / 3 Ebenen` + (t.excavation?.remaining ? ` · ${t.excavation.remaining} ${pitResource(state.seed, t.x, t.z, t.excavation.depth + 1) === 'coal' ? 'Braunkohle' : 'Stein'} verbleiben in der nächsten Schicht` : '');
+    el('pit-status').textContent = excavationStatus(state, t);
+    const button = el<HTMLButtonElement>('pit-order');
+    button.textContent = t.excavation?.ordered ? 'Tagebau pausieren' : t.excavation?.remaining ? 'Abbau fortsetzen' : t.excavation ? 'Nächste Ebene abgraben' : 'Tagebau eröffnen';
+    button.disabled = !t.excavation?.ordered && !excavationCheck(state, t.x, t.z).ok;
   }
   if (t?.node === 'tree' && !b && !tool) {
     el('priority-felling').textContent = t.priorityFelling ? 'Fällpriorität aufheben' : 'Bevorzugt fällen';
@@ -251,7 +269,7 @@ function drawMinimap() {
   ctx.fillStyle = viewDepth ? '#26333c' : '#c4cbbb'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   for (const t of state.tiles) {
     const u = viewDepth ? undergroundAt(state, t.x, t.z, viewDepth) : null;
-    ctx.fillStyle = viewDepth ? !u?.revealed ? '#35434b' : u.order ? '#6a97aa' : u.ore ? ORE_COLORS[u.ore] : u.solid ? '#748087' : '#b4a38b' : t.kind === 'water' ? '#7ebabc' : t.node === 'tree' ? BIOMES[t.biome].leaves : t.node === 'rock' ? '#a1a698' : t.road ? '#d3bf90' : BIOMES[t.biome].ground;
+    ctx.fillStyle = viewDepth ? !u?.revealed ? '#35434b' : u.order ? '#6a97aa' : u.ore ? ORE_COLORS[u.ore] : u.solid ? '#748087' : '#b4a38b' : t.excavation ? t.excavation.ordered ? '#d4a052' : '#9b9685' : t.kind === 'water' ? '#7ebabc' : t.node === 'tree' ? BIOMES[t.biome].leaves : t.node === 'rock' ? '#a1a698' : t.road ? '#d3bf90' : BIOMES[t.biome].ground;
     ctx.fillRect((t.x - bounds.minX) * sx, (t.z - bounds.minZ) * sz, sx + .2, sz + .2);
   }
   for (const b of state.buildings.filter(b => !viewDepth || b.kind === 'mine')) { ctx.fillStyle = b.complete ? '#fff0b9' : '#b36c46'; ctx.fillRect((b.x - bounds.minX) * sx, (b.z - bounds.minZ) * sz, Math.max(3, sx), Math.max(3, sz)); }

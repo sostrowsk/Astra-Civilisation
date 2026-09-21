@@ -6,7 +6,7 @@ export function capacity(b: Building, r: Resource): number {
   if (!b.complete) return 0;
   if (isStorage(b)) return 100;
   const inputs: Partial<Record<Building['kind'], Resource[]>> = { sawmill: ['wood'], workshop: ['stone', 'planks'], smelter: ['coal', 'ironOre', 'copperOre', 'goldOre'], forge: ['iron', 'tools'], academy: ['planks', 'copper', 'gold'], sheepfold: ['food'], weaver: ['wool'], tailor: ['cloth'], manufactory: ['copper', 'iron', 'wire', 'gears'] };
-  const outputs: Partial<Record<Building['kind'], Resource[]>> = { woodcutter: ['wood'], quarry: ['stone'], sawmill: ['planks'], workshop: ['tools'], farm: ['food'], smelter: ['iron', 'copper', 'gold'], forge: ['shears', 'drill'], academy: ['knowledge'], sheepfold: ['wool'], weaver: ['cloth'], tailor: ['clothes'], manufactory: ['wire', 'gears', 'machineParts'] };
+  const outputs: Partial<Record<Building['kind'], Resource[]>> = { woodcutter: ['wood'], quarry: ['stone', 'coal'], sawmill: ['planks'], workshop: ['tools'], farm: ['food'], smelter: ['iron', 'copper', 'gold'], forge: ['shears', 'drill'], academy: ['knowledge'], sheepfold: ['wool'], weaver: ['cloth'], tailor: ['clothes'], manufactory: ['wire', 'gears', 'machineParts'] };
   if (b.kind === 'mine') return r === 'drill' ? 2 : ['stone', 'coal', 'copperOre', 'ironOre', 'goldOre', 'diamond'].includes(r) ? 40 : 0;
   if (equipmentFor(b) === r) return 2;
   return outputs[b.kind]?.includes(r) ? 20 : inputs[b.kind]?.includes(r) ? 10 : 0;
