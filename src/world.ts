@@ -254,7 +254,7 @@ export class World {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.renderer.setClearColor('#cbd8ce');
+    this.renderer.setClearColor(visibilityLight.uniforms.visibilityBackground.value);
     this.renderer.domElement.setAttribute('aria-label', 'Astra: interaktive 3D-Spielwelt. Gebäude über die Bauleiste auswählen und auf ein freies Feld klicken.');
     this.renderer.domElement.tabIndex = 0;
     container.appendChild(this.renderer.domElement);
@@ -266,9 +266,8 @@ export class World {
     Object.assign(sun.shadow.camera, { left: -35, right: 35, top: 35, bottom: -35, near: 1, far: 90 });
     sun.shadow.normalBias = .12; sun.shadow.bias = .0001;
     sun.name = 'sun'; this.scene.add(sun); this.scene.add(sun.target);
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(10000, 10000), new THREE.MeshLambertMaterial({ color: '#b7cdc6' }));
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(10000, 10000), new THREE.MeshBasicMaterial({ color: visibilityLight.uniforms.visibilityBackground.value, fog: false }));
     sea.name = 'backdrop'; sea.rotation.x = -Math.PI / 2; sea.position.y = -.55; this.scene.add(sea);
-    this.scene.add(visibilityLight.createHalo());
     this.scene.add(this.terrain, this.buildings, this.people, this.markers);
     this.preview = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: '#edf9ba', transparent: true, opacity: .42, depthWrite: false }));
     this.preview.visible = false; this.markers.add(this.preview);
@@ -436,9 +435,10 @@ export class World {
     this.revision = s.revision;
   }
   setDepth(depth: number) {
-    ((this.scene.getObjectByName('backdrop') as THREE.Mesh).material as THREE.MeshLambertMaterial).color.set(depth ? '#28333b' : '#b7cdc6');
+    visibilityLight.uniforms.visibilityBackground.value.set(depth ? '#2e3434' : '#dfecc2');
+    ((this.scene.getObjectByName('backdrop') as THREE.Mesh).material as THREE.MeshBasicMaterial).color.copy(visibilityLight.uniforms.visibilityBackground.value);
     this.depth = depth; this.revision = -1; this.selected = null; this.preview.visible = false;
-    this.renderer.setClearColor(depth ? '#20282e' : '#cbd8ce');
+    this.renderer.setClearColor(visibilityLight.uniforms.visibilityBackground.value);
     this.scene.fog = new THREE.Fog(depth ? '#20282e' : '#cbd8ce', 1000, 2400);
   }
   rebuildUnderground() {

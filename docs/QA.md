@@ -219,3 +219,10 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 
 - 110 Tests erfolgreich. Neuer Regressionstest bestätigt: sämtliche Felder des bisherigen 30er-Kerns bleiben enthalten, zusätzliche Felder bis Radius 33 werden berücksichtigt, die Fokusgrenzen bleiben unverändert.
 - Visuelle Prüfung in isolierter 25-Regionen-Welt: zusätzlicher breiter, abgedunkelter Auslauf bei verkleinerter Ansicht. Keine Shader- oder Konsolenfehler. TypeScript, Produktionsbuild und `git diff --check` erfolgreich.
+
+## 21. September 2026 · Blickdichter Nebelrand
+
+- Ursache der Randartefakte: einzelne halbtransparente Flächen instanzierter Blöcke überlagerten sich und ließen dahinterliegende Seiten durchscheinen.
+- Übergang über die beleuchtete Oberflächenfarbe bei weiterhin blickdichter Darstellung und aktiver Tiefenprüfung. Hintergrund und Endfarbe des Übergangs sind identisch; kein separater Halo-Ring.
+- Browserprüfung der Oberfläche bei kleiner und vergrößerter Ansicht sowie nach Kamerabewegung; Untertageansicht mit passendem dunklem Hintergrund. Keine Shader- oder Konsolenfehler.
+- 110 Tests, TypeScript, Produktionsbuild und `git diff --check` erfolgreich. Bestehender Bundlegrößenhinweis unverändert.

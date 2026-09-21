@@ -1,5 +1,11 @@
 # Release Notes
 
+## 21. September 2026 · Ruhiger Nebelübergang am Kartenrand
+
+- Der zusätzliche Rand von drei Feldern geht gleichmäßig in die Hintergrundfarbe über. Die 30 vollständig sichtbaren Felder bleiben erhalten.
+- Blickdichte Blockflächen ersetzen die Einzeltransparenz: verdeckte Seiten scheinen nicht mehr durch, dunkle Überlagerungen und Gittermuster entfallen. Der separate leuchtende Ring wurde entfernt.
+- Passende Hintergrundfarben an der Oberfläche und unter Tage. 110 Tests und Produktionsbuild erfolgreich; visuelle Prüfung bei mehreren Zoomstufen.
+
 ## 21. September 2026 · Drei zusätzliche Felder statt Bildschirmpixel
 
 - Korrektur des Lichtsaums: 30 Felder bleiben vollständig sichtbar, weitere drei Felder bilden den weich abgedunkelten Übergang bis Radius 33. Bei kleinen Welten wird der zusätzliche Saum ebenfalls zum vorhandenen Kern addiert.
