@@ -213,3 +213,9 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - 109 bestehende Tests erfolgreich; Fokusgrenzen und Weltdaten bleiben unverändert. TypeScript und Produktionsbuild erfolgreich.
 - Browserprüfung in isolierter 25-Regionen-Welt mit mehrfach verändertem Zoom und Ziehen bis zum Kartenrand: runder, abgedunkelt auslaufender Rand. Kleine Bergbauwelt unter Tage ebenfalls visuell geprüft. Keine Shader- oder Konsolenfehler.
 - Randbreite wird über Fragmentableitungen in Bildschirmpixeln bestimmt und mit der Pixeldichte skaliert. Ein kleiner zusätzlicher Geometriebereich deckt Randfelder und überhängende Modelle ab; die Simulation wird nicht erweitert.
+
+
+## 21. September 2026 · Zusatzradius in Spielfeldern
+
+- 110 Tests erfolgreich. Neuer Regressionstest bestätigt: sämtliche Felder des bisherigen 30er-Kerns bleiben enthalten, zusätzliche Felder bis Radius 33 werden berücksichtigt, die Fokusgrenzen bleiben unverändert.
+- Visuelle Prüfung in isolierter 25-Regionen-Welt: zusätzlicher breiter, abgedunkelter Auslauf bei verkleinerter Ansicht. Keine Shader- oder Konsolenfehler. TypeScript, Produktionsbuild und `git diff --check` erfolgreich.

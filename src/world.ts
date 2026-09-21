@@ -1,5 +1,5 @@
-import { VISIBILITY_RADIUS, constrainView, inViewRadius, visibleTiles } from './visibility.ts';
-import { VisibilityLight, VISIBILITY_FEATHER_PX } from './visibility-light.ts';
+import { VISIBILITY_RADIUS, VISIBILITY_FEATHER_TILES, constrainView, inViewRadius, visibleTiles } from './visibility.ts';
+import { VisibilityLight } from './visibility-light.ts';
 import { isMerchant } from './logistics.ts';
 import { surfaceHeight, treeGrowthStage, pitResource } from './surface.ts';
 import { undergroundAt, ORE_COLORS } from './mining.ts';
@@ -334,10 +334,10 @@ export class World {
     if (!hits.length) return null;
     const p = hits[0].point;
     const x = Math.round(p.x / UNIT + (ORIGINAL_WIDTH - 1) / 2), z = Math.round(p.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2);
-    return inViewRadius({x, z}, this.viewFocus, this.viewRadius) && tileAt(this.getState(), x, z) ? { x, z } : null;
+    return inViewRadius({x, z}, this.viewFocus, this.viewRadius + VISIBILITY_FEATHER_TILES) && tileAt(this.getState(), x, z) ? { x, z } : null;
   }
   hover(p: Point | null, tool: Tool | null) {
-    if (!p || !tool || !inViewRadius(p, this.viewFocus, this.viewRadius)) { this.preview.visible = false; return; }
+    if (!p || !tool || !inViewRadius(p, this.viewFocus, this.viewRadius + VISIBILITY_FEATHER_TILES)) { this.preview.visible = false; return; }
     const s = this.getState(), check = placement(s, tool, p.x, p.z);
     const bridge = false;
     const x = p.x;
@@ -477,13 +477,9 @@ export class World {
     const {focus, radius} = constrainView(s, requested);
     visibilityLight.uniforms.visibilityFocus.value.set(wx(focus.x), wz(focus.z));
     visibilityLight.uniforms.visibilityRadius.value = radius * UNIT;
-    visibilityLight.uniforms.visibilityPixels.value = VISIBILITY_FEATHER_PX * this.renderer.getPixelRatio();
-    // Include whole tiles and overhanging models intersecting the feather. The
-    // shader trims them precisely; rounding avoids rebuilds on every zoom tick.
-    const height = Math.max(1, this.container.clientHeight);
-    const groundScale = Math.max(.01, Math.abs(this.camera.position.y - this.controls.target.y) / this.camera.position.distanceTo(this.controls.target));
-    const featherTiles = VISIBILITY_FEATHER_PX * (this.camera.top - this.camera.bottom) / (height * this.camera.zoom * groundScale * UNIT);
-    const renderRadius = radius + Math.ceil(featherTiles + 2);
+    visibilityLight.uniforms.visibilityFeatherWidth.value = VISIBILITY_FEATHER_TILES * UNIT;
+    // Keep complete tiles and overhanging models for the shader to trim.
+    const renderRadius = radius + VISIBILITY_FEATHER_TILES + 2;
     if (focus.x !== Math.round(requested.x) || focus.z !== Math.round(requested.z)) {
       // Move camera and target together, preserving zoom, rotation and viewing angle.
       const correction = new THREE.Vector3(wx(focus.x) - this.controls.target.x, 0, wz(focus.z) - this.controls.target.z);
@@ -492,7 +488,7 @@ export class World {
     if (s.revision !== this.revision || radius !== this.viewRadius || renderRadius !== this.renderRadius || focus.x !== this.viewFocus.x || focus.z !== this.viewFocus.z) {
       this.viewFocus = focus; this.viewRadius = radius; this.renderRadius = renderRadius; this.rebuild();
     }
-    if (this.preview.visible && !inViewRadius({x:this.preview.position.x / UNIT + (ORIGINAL_WIDTH - 1) / 2, z:this.preview.position.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2}, this.viewFocus, this.viewRadius)) this.preview.visible = false;
+    if (this.preview.visible && !inViewRadius({x:this.preview.position.x / UNIT + (ORIGINAL_WIDTH - 1) / 2, z:this.preview.position.z / UNIT + (ORIGINAL_HEIGHT - 1) / 2}, this.viewFocus, this.viewRadius + VISIBILITY_FEATHER_TILES)) this.preview.visible = false;
     for (const b of s.buildings) {
       const model = this.buildingMeshes.get(b.id); if (!model) continue;
       const final = model.userData.final as THREE.Group;
@@ -614,7 +610,7 @@ export class World {
       if (v.cargo) cargo.material = material(v.cargo.resource === 'stone' ? '#98a6a4' : v.cargo.resource === 'planks' ? '#dbb375' : v.cargo.resource === 'food' ? '#c5a249' : v.cargo.resource === 'tools' ? '#718993' : v.cargo.resource === 'knowledge' ? '#899bbb' : '#89603e');
     }
     for (const [id, g] of this.personMeshes) if (!s.villagers.some(v => v.id === id)) { this.people.remove(g); this.personMeshes.delete(id); this.workerLabels.get(id)?.remove(); this.workerLabels.delete(id); }
-    this.selection.visible = !!this.selected && inViewRadius(this.selected, this.viewFocus, this.viewRadius);
+    this.selection.visible = !!this.selected && inViewRadius(this.selected, this.viewFocus, this.viewRadius + VISIBILITY_FEATHER_TILES);
     if (this.selected && this.selection.visible) this.selection.position.set(wx(this.selected.x), (this.depth ? undergroundAt(s, this.selected.x, this.selected.z, this.depth)?.solid ? 1.0 : .15 : surfaceHeight(tileAt(s, this.selected.x, this.selected.z)) + .03), wz(this.selected.z));
     this.renderer.render(this.scene, this.camera);
   }

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, explore, goods, serialize, step, tileAt, type GameState } from './sim.ts';
 import { generateChunk, regionId } from './generator.ts';
-import { VISIBILITY_RADIUS, constrainView, inViewRadius, visibleTiles } from './visibility.ts';
+import { VISIBILITY_RADIUS, VISIBILITY_FEATHER_TILES, constrainView, inViewRadius, visibleTiles } from './visibility.ts';
 
 test('visibility is a 30-tile circle including its boundary', () => {
   const focus={x:-14,z:17}; assert.equal(VISIBILITY_RADIUS,30);
@@ -28,6 +28,19 @@ function regionFixture(missing?: [number,number]) {
   }
   return s;
 }
+
+test('three extra terrain fields extend the view without shrinking the fully visible core', () => {
+  const s=regionFixture(), view=constrainView(s,{x:12,z:12});
+  assert.equal(view.radius,30);
+  const core=visibleTiles(s,view.focus,view.radius);
+  const extended=visibleTiles(s,view.focus,view.radius+VISIBILITY_FEATHER_TILES);
+  const positions=new Set(extended.map(t=>`${t.x},${t.z}`));
+  assert.ok(core.every(t=>positions.has(`${t.x},${t.z}`)));
+  assert.ok(extended.length>core.length);
+  assert.ok(positions.has('45,12')); // 30 + 3 fields from the focus.
+  assert.ok(!positions.has('46,12'));
+  assert.deepEqual(constrainView(s,view.focus),view);
+});
 
 test('camera focus keeps the full circle inside every map edge and corner', () => {
   const s=regionFixture(), before=serialize(s);

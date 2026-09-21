@@ -2,6 +2,7 @@ import { CHUNK_W, CHUNK_H, regionCoords, regionId } from './generator.ts';
 import { tileAt, type GameState, type Point, type Tile } from './sim.ts';
 
 export const VISIBILITY_RADIUS = 30;
+export const VISIBILITY_FEATHER_TILES = 3;
 export function inViewRadius(p: Point, focus: Point, radius = VISIBILITY_RADIUS) {
   return (p.x - focus.x) ** 2 + (p.z - focus.z) ** 2 <= radius ** 2;
 }

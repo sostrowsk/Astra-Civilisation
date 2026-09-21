@@ -1,20 +1,17 @@
 import * as THREE from 'three';
 
-export const VISIBILITY_FEATHER_PX = 3;
-
-// Derivatives measure radial distance per framebuffer pixel, independent of zoom
-// and camera angle. Scale by DPR so the feather is always three CSS pixels.
+// The fully visible core is preserved. Only the additional world-space band
+// fades out, so its width scales with the terrain when zooming.
 const edgeGLSL = `
   float radialDistance = length(vVisibilityPosition.xz - visibilityFocus);
-  float worldPerPixel = max(length(vec2(dFdx(radialDistance), dFdy(radialDistance))), 0.00001);
-  float edge = clamp((radialDistance - visibilityRadius) / (worldPerPixel * visibilityPixels), 0.0, 1.0);
+  float edge = clamp((radialDistance - visibilityRadius) / visibilityFeatherWidth, 0.0, 1.0);
 `;
 
 export class VisibilityLight {
   uniforms = {
     visibilityFocus: { value: new THREE.Vector2() },
     visibilityRadius: { value: 48 },
-    visibilityPixels: { value: VISIBILITY_FEATHER_PX },
+    visibilityFeatherWidth: { value: 1 },
   };
 
   apply(material: THREE.MeshLambertMaterial) {
@@ -33,7 +30,7 @@ export class VisibilityLight {
         varying vec3 vVisibilityPosition;
         uniform vec2 visibilityFocus;
         uniform float visibilityRadius;
-        uniform float visibilityPixels;
+        uniform float visibilityFeatherWidth;
         ${shader.fragmentShader}`.replace('#include <opaque_fragment>', `
         ${edgeGLSL}
         float visibility = 1.0 - smoothstep(0.0, 1.0, edge);
@@ -42,7 +39,7 @@ export class VisibilityLight {
         diffuseColor.a *= visibility;
         #include <opaque_fragment>`);
     };
-    material.customProgramCacheKey = () => 'visibility-light-v1';
+    material.customProgramCacheKey = () => 'visibility-light-v2';
   }
 
   createHalo() {
@@ -60,7 +57,7 @@ export class VisibilityLight {
         varying vec3 vVisibilityPosition;
         uniform vec2 visibilityFocus;
         uniform float visibilityRadius;
-        uniform float visibilityPixels;
+        uniform float visibilityFeatherWidth;
         void main() {
           ${edgeGLSL}
           if (radialDistance < visibilityRadius || edge >= 1.0) discard;

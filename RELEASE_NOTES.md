@@ -1,5 +1,11 @@
 # Release Notes
 
+## 21. September 2026 · Drei zusätzliche Felder statt Bildschirmpixel
+
+- Korrektur des Lichtsaums: 30 Felder bleiben vollständig sichtbar, weitere drei Felder bilden den weich abgedunkelten Übergang bis Radius 33. Bei kleinen Welten wird der zusätzliche Saum ebenfalls zum vorhandenen Kern addiert.
+- Die Breite wird in Spielfeldern berechnet und skaliert mit dem Zoom. Die Fokusgrenze bleibt am bisherigen Kern; vorhandene zusätzliche Randfelder sind auswählbar und bebaubar.
+- 110 Tests und Produktionsbuild erfolgreich. Regressionstest bestätigt den Erhalt aller bisherigen Felder und den zusätzlichen Radius. Sichtprüfung im Browser ohne Shaderfehler.
+
 ## 21. September 2026 · Weicher Lichtsaum am Sichtkreis
 
 - Der Sichtkreis erhält einen zusätzlichen, drei Bildschirmpixel breiten Rand: Gelände, Wasser, Gebäude und Bewohner werden nach außen dunkler und blenden weich aus, wie am Rand eines Taschenlampenkegels.
