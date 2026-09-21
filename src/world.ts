@@ -207,6 +207,7 @@ export class World {
   buildingMeshes = new Map<number, THREE.Group>();
   personMeshes = new Map<number, THREE.Group>();
   workerLabels = new Map<number, HTMLDivElement>();
+  labelVisibility = { surface: false, underground: true };
   preview: THREE.Mesh;
   selection: THREE.Mesh;
   revision = -1;
@@ -466,9 +467,9 @@ export class World {
       g.rotation.y = v.facing;
       const label = this.workerLabels.get(v.id)!;
       const projected = new THREE.Vector3(g.position.x, g.position.y + 1.3, g.position.z).project(this.camera);
-      label.hidden = !this.depth || !g.visible || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;
+      label.hidden = !(this.depth ? this.labelVisibility.underground : this.labelVisibility.surface) || !g.visible || projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1;
       if (!label.hidden) {
-        label.textContent = `${v.name} · ${v.mining?.stage === 'work' ? 'gräbt' : v.cargo ? 'trägt ' + v.cargo.amount : 'unterwegs'}`;
+        label.textContent = `${v.name} · ${v.cargo ? 'trägt ' + v.cargo.amount : walking ? 'unterwegs' : v.mining?.stage === 'work' || v.task?.kind === 'excavate' ? 'gräbt' : v.task?.kind === 'gather' ? v.task.resource === 'wood' ? 'fällt Holz' : 'baut Stein ab' : v.task ? 'arbeitet' : 'wartet'}`;
         const x = (projected.x + 1) / 2 * this.container.clientWidth;
         let y = (1 - projected.y) / 2 * this.container.clientHeight;
         while (labelPositions.some(p => Math.abs(p.x - x) < 130 && Math.abs(p.y - y) < 25)) y -= 25;

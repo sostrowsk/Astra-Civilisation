@@ -61,6 +61,14 @@ const icon = (name: string, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const sandbox = new URLSearchParams(location.search).has('sandbox');
+const labelSettingsKey = 'astra-civilisation:labels' + (sandbox ? ':sandbox' : '');
+const labelVisibility = { surface: false, underground: true };
+try {
+  const saved = JSON.parse(localStorage.getItem(labelSettingsKey) ?? '{}');
+  if (typeof saved?.surface === 'boolean') labelVisibility.surface = saved.surface;
+  if (typeof saved?.underground === 'boolean') labelVisibility.underground = saved.underground;
+} catch { /* Use defaults when browser settings are unavailable. */ }
+
 const saveLibrary = new SaveLibrary(browserSaveStore, sandbox);
 let state: GameState, activeSlot: SavedWorld | null = null;
 let canSave = true, startupMessage = '';
@@ -100,7 +108,7 @@ el('app').innerHTML = `
     <div class="time-panel"><div class="day">${icon('sun')}<span id="day">Tag 1</span></div><div class="speeds" aria-label="Spielgeschwindigkeit"><button id="pause" class="icon-button" aria-label="Spiel pausieren" title="Pause · Leertaste">${icon('pause')}</button>${[1, 2, 4].map(n => `<button class="speed ${n === 1 ? 'active' : ''}" data-speed="${n}" aria-label="${n}-fache Geschwindigkeit" aria-pressed="${n === 1}">${n}×</button>`).join('')}</div></div>
     <button id="help" class="icon-button top-help" aria-label="Spielhilfe öffnen" title="Spielhilfe">${icon('help')}</button>
   </header>
-  <div class="place-label"><span class="live-dot"></span> ASTRA <span class="divider">/</span> <button id="development" class="era-button">Pionierlager · Stufe I</button> <button id="expeditions" class="era-button">${icon('compass')} Expeditionen</button><button id="world-settings" class="era-button">Seed ${state.seed}</button><button id="underground-toggle" class="era-button">${icon('mine')} Unter Tage</button><button id="stock-list" class="era-button">Wirtschaft</button><button id="world-library" class="era-button">Spielstände</button>${sandbox ? '<b class="sandbox-label">TESTWELT</b>' : ''}</div>
+  <div class="place-label"><span class="live-dot"></span> ASTRA <span class="divider">/</span> <button id="development" class="era-button">Pionierlager · Stufe I</button> <button id="expeditions" class="era-button">${icon('compass')} Expeditionen</button><button id="world-settings" class="era-button">Seed ${state.seed}</button><button id="underground-toggle" class="era-button">${icon('mine')} Unter Tage</button><button id="stock-list" class="era-button">Wirtschaft</button><button id="world-library" class="era-button">Spielstände</button><button id="label-settings" class="era-button">Bewohnerlabels</button>${sandbox ? '<b class="sandbox-label">TESTWELT</b>' : ''}</div>
   <aside id="mission-panel" class="mission panel"><div class="eyebrow">DEINE GESCHICHTE <span id="chapter-number">01</span></div><h1 id="chapter-title">Ein neuer Anfang.</h1><p id="chapter-description">Aus einem kleinen Lager wird<br>ein Ort, der bleibt.</p><div class="mission-progress"><i id="mission-fill"></i></div><ol id="mission-list"></ol><div id="mission-next"></div></aside>
   <aside id="inspector" class="inspector panel" aria-label="Auswahl und Bauinformationen"></aside>
   <div class="view-controls"><button id="rotate-left" class="icon-button" aria-label="Kamera nach links drehen" title="Drehen · Q">${icon('turn')}</button><span></span><button id="zoom-in" class="icon-button" aria-label="Vergrößern">${icon('plus')}</button><button id="zoom-out" class="icon-button" aria-label="Verkleinern">${icon('minus')}</button><span></span><button id="home" class="icon-button" aria-label="Kamera zum Gründungslager" title="Heimatansicht · H">${icon('compass')}</button></div>
@@ -322,7 +330,7 @@ function showVictory() {
   openDialog(`<div class="victory-symbol">${icon('outpost')}</div><div class="eyebrow">KAPITEL 01 · ABGESCHLOSSEN</div><h2>Aus einem Anfang<br>wird eine Zukunft.</h2><p>Ein neuer Ort ist entstanden. Erkundet als Nächstes benachbarte Regionen und entwickelt euer Lager zum Dorf. Über „Entwicklung & Expeditionen“ geht eure Geschichte weiter.</p><div class="victory-stats"><span><b>${state.villagers.length}</b>Bewohner</span><span><b>${state.buildings.filter(b => b.complete).length}</b>Bauwerke</span><span><b>${Math.floor(state.time / 120) + 1}</b>Tage</span></div><button class="primary" data-close>Unser Tal wächst weiter ${icon('arrow')}</button>`);
   save();
 }
-try { world = new World(el('world'), () => state); }
+try { world = new World(el('world'), () => state); world.labelVisibility = labelVisibility; }
 catch (error) { el('world').innerHTML = `<div class="webgl-error"><h1>Die 3D-Welt konnte nicht starten.</h1><p>Bitte öffne das Spiel in einem Browser mit aktiviertem WebGL2 und Hardwarebeschleunigung.</p><code>${escape(String(error))}</code></div>`; throw error; }
 world.onClick = p => { if (viewDepth) { miningClick(p); return; } if (tool) buildAt(p); else { selected = p; world.selected = p; inspectorKey = ''; updateInspector(); } };
 world.onHover = p => { hovered = p; if (viewDepth) return; world.hover(p, tool); updateHint(); };
@@ -332,6 +340,17 @@ el('development').onclick = showDevelopment; el('expeditions').onclick = showDev
 document.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach(b => b.onclick = () => setSpeed(Number(b.dataset.speed)));
 el('pause').onclick = () => setSpeed(speed ? 0 : lastSpeed);
 el('help').onclick = showHelp;
+el('label-settings').onclick = () => {
+  openDialog(`<div class="eyebrow">ANSICHT</div><h2>Bewohnerlabels</h2><p>Namen und Tätigkeiten über den Bewohnern getrennt ein- oder ausblenden. Die Auswahl gilt für alle deine Partien in diesem Browser.</p><div class="label-options"><label><input id="surface-labels" type="checkbox" ${labelVisibility.surface ? 'checked' : ''}> Oberfläche</label><label><input id="underground-labels" type="checkbox" ${labelVisibility.underground ? 'checked' : ''}> Unter Tage</label></div><button class="primary" data-close>Zurück ins Spiel</button>`);
+  for (const [id, key] of [['surface-labels', 'surface'], ['underground-labels', 'underground']] as const) {
+    el<HTMLInputElement>(id).onchange = () => {
+      labelVisibility[key] = el<HTMLInputElement>(id).checked;
+      try { localStorage.setItem(labelSettingsKey, JSON.stringify(labelVisibility)); }
+      catch { toast('Die Auswahl gilt für diese Sitzung; der Browser konnte sie nicht dauerhaft speichern.'); }
+    };
+  }
+};
+
 el('home').onclick = () => world.resetCamera();
 el('brand-home').onclick = e => { e.preventDefault(); world.resetCamera(); };
 el('rotate-left').onclick = () => world.rotate(Math.PI / 4);

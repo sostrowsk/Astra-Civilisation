@@ -43,3 +43,5 @@ h1,h2,.brand>span,.resource strong{font-family:'Manrope Variable',sans-serif}
 @media(max-width:700px){.place-label{flex-wrap:wrap}.worlds-dialog{padding:20px}.saved-world{padding:14px}}
 
 .world-actions .danger{margin-top:0}
+
+.label-options{display:grid;gap:16px;margin:24px 0 30px}.label-options label{display:flex;align-items:center;gap:12px;font-size:14px;cursor:pointer}.label-options input{width:18px;height:18px;accent-color:var(--green)}
