@@ -2,7 +2,7 @@
 
 Voxel-Aufbauspiel mit selbstständig arbeitenden Bewohnern und physischem Warentransport. **Version 0.3 – Lebendige Welten & Untertage** ergänzt Seed-Welten, zusammenhängende Landschaften und Bergbau auf drei Tiefenebenen.
 
-[Öffentliches Repository](https://github.com/sostrowsk/Astra-Civilisation) · [Release Notes](RELEASE_NOTES.md) · [Regeln und Umsetzungsplan](docs/WORLD-MINING-PLAN.md)
+[Öffentliches Repository](https://github.com/sostrowsk/Astra-Civilisation) · [Release Notes](RELEASE_NOTES.md) · [Aktuelle Gesamtspezifikation](docs/GAME-SPEC.md)
 
 ## Starten
 
@@ -71,7 +71,7 @@ Bis zu vier Bergleute pro Mine laufen zum Schacht, graben an unterschiedlichen e
 | Akademie | 1 Brett / 1 Kupfer / 1 Gold | 2 / 6 / 20 Wissen |
 | Diamanten-Expedition | 2 Diamanten statt sonstiger Vorräte | Eine benachbarte Region; Stufenvoraussetzungen gelten weiter |
 
-Metall und Forschungsrohstoff werden im jeweiligen Gebäude eingestellt, sobald dessen Arbeiter seinen aktuellen Auftrag beendet hat. **Wirtschaft** zeigt alle Rohstoffe, Kapazitäten und Warenflüsse. Schmelzhütte (hoher gemauerter Ofen) und Schmiede (offenes Holzgebäude mit Amboss) haben unterschiedliche Modelle.
+Metall und Forschungsrohstoff lassen sich jederzeit im jeweiligen Gebäude auswählen. Ein vorgemerkter Wechsel gilt nach Abschluss des laufenden Auftrags. **Wirtschaft** zeigt alle Rohstoffe, Kapazitäten und Warenflüsse. Schmelzhütte (hoher gemauerter Ofen) und Schmiede (offenes Holzgebäude mit Amboss) haben unterschiedliche Modelle.
 
 ![Erkundeter Stollen mit Erzadern](docs/mining-preview.png)
 
@@ -156,7 +156,7 @@ Die Datenbank **IndexedDB** liegt ausschließlich im Browser; kein Server und ke
 
 `npm run fixtures` erzeugt isolierte Testwelten: `?sandbox=1&scenario=village` und `mining` stammen aus einem echten Produktionsdurchlauf. `?sandbox=1&scenario=world` ist eine ausdrücklich mit Vorräten ausgestattete Landschaftsvorschau mit 25 Regionen. `?sandbox=1&scenario=economy` ist eine ausdrücklich finanzierte Vorschau mit tatsächlich errichteten und produzierenden Textil- und Metallbetrieben. Die Fixtures sind nur im Entwicklungsserver verfügbar, werden nicht im Produktionsbuild ausgeliefert und schreiben ausschließlich in einen separaten Testspielstand.
 
-Der automatisierte Start-bis-Eisenscheren-Durchlauf benötigt mit Seed 42 etwa **36,4 Simulationsminuten**. Das ist eine Spielbarkeitsprüfung und keine gemessene menschliche Spielzeit. Weitere Prüfungen: [QA-Protokoll](docs/QA.md). Frühere Spezifikationen für Version 0.1 und 0.2 bleiben als historische Dokumente erhalten.
+Der automatisierte Start-bis-Eisenscheren-Durchlauf benötigt mit Seed 42 etwa **36,4 Simulationsminuten**. Das ist eine Spielbarkeitsprüfung und keine gemessene menschliche Spielzeit. Weitere Prüfungen: [QA-Protokoll](docs/QA.md). Die [Gesamtspezifikation vom 22. September 2026](docs/GAME-SPEC.md) beschreibt alle aktuellen Spielregeln, Balancingwerte, technischen Grenzen und Abnahmeszenarien. Frühere Spezifikationen und Umsetzungspläne bleiben als historische Dokumente erhalten.
 
 ## Grenzen
 

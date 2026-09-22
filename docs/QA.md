@@ -226,3 +226,10 @@ Die eigene laufende Partie des Nutzers wurde nicht für Bau-, Aufstiegs- oder Ne
 - Übergang über die beleuchtete Oberflächenfarbe bei weiterhin blickdichter Darstellung und aktiver Tiefenprüfung. Hintergrund und Endfarbe des Übergangs sind identisch; kein separater Halo-Ring.
 - Browserprüfung der Oberfläche bei kleiner und vergrößerter Ansicht sowie nach Kamerabewegung; Untertageansicht mit passendem dunklem Hintergrund. Keine Shader- oder Konsolenfehler.
 - 110 Tests, TypeScript, Produktionsbuild und `git diff --check` erfolgreich. Bestehender Bundlegrößenhinweis unverändert.
+
+## 22. September 2026 · Gesamtspezifikation
+
+- Neue Gesamtspezifikation gegen Quellstand `040e3ca` geprüft: 24 Kapitel, vollständiger Katalog der 21 Gebäude und 22 Ressourcen, 32 Abnahmeszenarien.
+- Gebäudekosten und Rohstoffkapazitäten aus den Laufzeitdefinitionen extrahiert; Rezepte, Stufen, Reichweiten, Logistik, Generator, Speicherformat und Sichtbereich anhand des Codes beschrieben.
+- Kapitelanker und lokale Quellenlinks maschinell aufgelöst; Gebäudekatalog, Anzahl der Abnahmeszenarien, Codeblock-Paare und fehlende Platzhalter geprüft. `git diff --check` erfolgreich.
+- Ausschließlich Dokumentationsänderung. Keine erneute Simulation, kein neuer Browser- oder Buildlauf; der letzte dokumentierte vollständige Spieltest umfasst weiterhin 110 erfolgreiche Tests vom 21. September 2026.

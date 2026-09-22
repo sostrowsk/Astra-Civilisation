@@ -1,5 +1,11 @@
 # Release Notes
 
+## 22. September 2026 · Ausführliche Gesamtspezifikation
+
+- Neue [Gesamtspezifikation](docs/GAME-SPEC.md) mit 24 Kapiteln: Spielablauf, Seeds und Biome, Expansion, fünf Entwicklungsstufen, alle 21 Gebäude und 22 Ressourcen, Produktion, Lagergrenzen, lokale Bewohner und Händler, Bergbau, Tagebau, Sichtbereich und mehrere Partien.
+- Gebäudekosten und Kapazitäten aus dem Quellcode abgeglichen; Rezepte, Reichweiten, Arbeitszeiten, Aufstiegskosten und Speicherregeln dokumentiert. 32 Abnahmeszenarien und ausdrücklich getrennte Vorschläge für spätere Arbeiten.
+- Aktuelle technische Grenzen und Sonderfälle offengelegt. README verweist auf die neue Hauptspezifikation; die erste MVP-Spezifikation ist als historisch gekennzeichnet. Keine Spielmechanik oder Speicherdaten geändert.
+
 ## 21. September 2026 · Ruhiger Nebelübergang am Kartenrand
 
 - Der zusätzliche Rand von drei Feldern geht gleichmäßig in die Hintergrundfarbe über. Die 30 vollständig sichtbaren Felder bleiben erhalten.

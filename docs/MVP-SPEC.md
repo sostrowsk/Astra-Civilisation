@@ -1,5 +1,7 @@
 # Astra Civilisation — MVP-Spezifikation
 
+> Historischer Stand des ersten MVP. Die aktuellen Regeln stehen in der [Gesamtspezifikation vom 22. September 2026](GAME-SPEC.md).
+
 Stand: 17. September 2026. Zielplattform: Desktop-Browser mit WebGL2, Maus und Tastatur. Einzelspieler, lokal, ohne Konto oder Backend.
 
 ## Produktidee
